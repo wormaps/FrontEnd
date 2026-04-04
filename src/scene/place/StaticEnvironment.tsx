@@ -1,91 +1,26 @@
 "use client";
 
-import * as THREE from "three";
-import { usePlaybackStore } from "../../stores/playbackStore";
-import type { PlacePackage, BuildingConfig, RoadConfig } from "../../data/placePackages";
+import { Suspense } from "react";
+import type { PlacePackage } from "../../data/placePackages";
+import type { GeometryLiveMapping } from "../../shared/contracts";
+import SceneAssetModel from "./SceneAssetModel";
+import StaticEnvironmentFallback from "./StaticEnvironmentFallback";
 
 type StaticEnvironmentProps = {
   pkg: PlacePackage;
+  assetUrl: string;
+  assetAvailable: boolean;
+  mapping: GeometryLiveMapping | null;
 };
 
-function Ground({ pkg }: { pkg: PlacePackage }) {
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.01, 0]}>
-      <planeGeometry args={[200, 200]} />
-      <meshStandardMaterial color={pkg.groundColor} />
-    </mesh>
-  );
-}
-
-function Building({ config }: { config: BuildingConfig }) {
-  const isNight = usePlaybackStore((s) => s.isNight());
-  const baseColor = config.color;
+export default function StaticEnvironment({ pkg, assetUrl, assetAvailable, mapping }: StaticEnvironmentProps) {
+  if (!assetAvailable || assetUrl.length === 0) {
+    return <StaticEnvironmentFallback pkg={pkg} />;
+  }
 
   return (
-    <mesh
-      position={config.position}
-      castShadow
-      receiveShadow
-    >
-      <boxGeometry args={config.size} />
-      <meshStandardMaterial
-        color={baseColor}
-        emissive={isNight ? "#1a1a3a" : "#000000"}
-        emissiveIntensity={isNight ? 0.08 : 0}
-      />
-    </mesh>
-  );
-}
-
-function Road({ config }: { config: RoadConfig }) {
-  const start = new THREE.Vector3(config.start[0], 0.01, config.start[1]);
-  const end = new THREE.Vector3(config.end[0], 0.01, config.end[1]);
-  const length = start.distanceTo(end);
-  const midpoint = start.clone().add(end).multiplyScalar(0.5);
-  const angle = Math.atan2(end.z - start.z, end.x - start.x);
-
-  return (
-    <mesh position={midpoint} rotation={[0, -angle + Math.PI / 2, 0]} receiveShadow>
-      <planeGeometry args={[config.width, length]} />
-      <meshStandardMaterial color={config.color} roughness={0.9} />
-    </mesh>
-  );
-}
-
-function NeonSigns({ pkg }: { pkg: PlacePackage }) {
-  const isNight = usePlaybackStore((s) => s.isNight());
-  if (!isNight) return null;
-
-  return (
-    <>
-      {pkg.buildings.slice(0, 4).map((b, i) => (
-        <mesh
-          key={`neon-${b.id}`}
-          position={[b.position[0] + b.size[0] / 2, b.position[2] + 1, b.position[1] + b.size[1] / 2]}
-        >
-          <boxGeometry args={[0.1, 1.5, b.size[1] * 0.6]} />
-          <meshStandardMaterial
-            color={["#ff6ec7", "#00f5ff", "#ff4e00", "#7b2dff"][i]}
-            emissive={["#ff6ec7", "#00f5ff", "#ff4e00", "#7b2dff"][i]}
-            emissiveIntensity={1.5}
-          />
-        </mesh>
-      ))}
-    </>
-  );
-}
-
-export default function StaticEnvironment({ pkg }: StaticEnvironmentProps) {
-  return (
-    <group>
-      <Ground pkg={pkg} />
-      {pkg.buildings.map((b) => (
-        <Building key={b.id} config={b} />
-      ))}
-      {pkg.roads.map((r) => (
-        <Road key={r.id} config={r} />
-      ))}
-      <NeonSigns pkg={pkg} />
-    </group>
+    <Suspense fallback={<StaticEnvironmentFallback pkg={pkg} />}>
+      <SceneAssetModel assetUrl={assetUrl} mapping={mapping} />
+    </Suspense>
   );
 }

@@ -10,7 +10,7 @@ import { createLogger, toErrorContext } from "../../shared/logger";
 import {
   fetchSceneBootstrapBundle,
 } from "../../shared/api";
-import type { SceneBootstrap } from "../../shared/contracts";
+import type { GeometryLiveMapping, SceneBootstrap } from "../../shared/contracts";
 import StaticEnvironment from "./StaticEnvironment";
 import CameraController from "./CameraController";
 import PlaybackSystem from "./PlaybackSystem";
@@ -46,9 +46,11 @@ export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
 
   const [scenePkgBySlug, setScenePkgBySlug] = useState<Record<string, PlacePackage | null>>({});
   const [sceneBootstrapBySlug, setSceneBootstrapBySlug] = useState<Record<string, SceneBootstrap | null>>({});
+  const [sceneMappingBySlug, setSceneMappingBySlug] = useState<Record<string, GeometryLiveMapping | null>>({});
 
   const scenePkg = scenePkgBySlug[slug] ?? null;
   const sceneBootstrap = sceneBootstrapBySlug[slug] ?? null;
+  const sceneMapping = sceneMappingBySlug[slug] ?? null;
 
   const normalizedHour = useMemo(() => {
     const raw = Math.floor(currentTime);
@@ -75,6 +77,10 @@ export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
         setSceneBootstrapBySlug((previous) => ({
           ...previous,
           [slug]: bootstrap,
+        }));
+        setSceneMappingBySlug((previous) => ({
+          ...previous,
+          [slug]: mapping,
         }));
 
         logger.info("Bootstrapping place scene", {
@@ -166,7 +172,12 @@ export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
 
       <PlaybackSystem />
 
-      <StaticEnvironment pkg={scenePkg} />
+      <StaticEnvironment
+        pkg={scenePkg}
+        assetUrl={sceneBootstrap?.assetUrl ?? ""}
+        assetAvailable={sceneBootstrap?.assetAvailable ?? false}
+        mapping={sceneMapping}
+      />
 
       <PedestrianSystem />
       <VehicleSystem pkg={scenePkg} />

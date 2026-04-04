@@ -4,6 +4,7 @@ export type SceneBootstrap = {
   sceneVersion: number;
   geometryId: string;
   assetUrl: string;
+  assetAvailable: boolean;
   sceneEndpoints: {
     mapping: string;
     package: string;

@@ -11,6 +11,10 @@ function toLiveStateEndpoint(baseSlug: string, kind: "traffic" | "weather" | "pl
   return `/api/live/${baseSlug}/${kind}`;
 }
 
+function toAssetUrl(slug: string, sceneVersion: number) {
+  return `/assets/places/${slug}/scene-v${sceneVersion}.glb`;
+}
+
 export function createStaticSceneBootstrap(place: Place): SceneBootstrap {
   const pkg = PLACE_PACKAGES[place.slug];
   const sceneVersion = 1;
@@ -19,12 +23,15 @@ export function createStaticSceneBootstrap(place: Place): SceneBootstrap {
     throw new Error(`Place package not found for slug: ${place.slug}`);
   }
 
+  const assetUrl = toAssetUrl(pkg.slug, sceneVersion);
+
   return validateSceneBootstrap({
     placeId: place.id,
     slug: place.slug,
     sceneVersion,
     geometryId: `${pkg.slug}:v${sceneVersion}`,
-    assetUrl: `/assets/places/${pkg.slug}/scene-v${sceneVersion}.glb`,
+    assetUrl,
+    assetAvailable: false,
     sceneEndpoints: {
       mapping: `/api/scene/${pkg.slug}/mapping`,
       package: `/api/scene/${pkg.slug}/package`,

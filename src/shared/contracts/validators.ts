@@ -18,6 +18,10 @@ export function validateSceneBootstrap(input: SceneBootstrap): SceneBootstrap {
   ensure(input.sceneVersion >= 1, "scene bootstrap sceneVersion must be >= 1");
   ensure(input.geometryId.length > 0, "scene bootstrap geometryId is required");
   ensure(input.assetUrl.length > 0, "scene bootstrap assetUrl is required");
+  ensure(typeof input.assetAvailable === "boolean", "scene bootstrap assetAvailable must be boolean");
+  if (input.assetAvailable) {
+    ensure(input.assetUrl.endsWith(".glb"), "scene bootstrap assetUrl must be a .glb when asset is available");
+  }
 
   ensure(input.sceneEndpoints.mapping.length > 0, "scene bootstrap mapping endpoint is required");
   ensure(input.sceneEndpoints.package.length > 0, "scene bootstrap package endpoint is required");
