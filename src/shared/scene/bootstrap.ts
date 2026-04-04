@@ -15,7 +15,14 @@ function toAssetUrl(slug: string, sceneVersion: number) {
   return `/assets/places/${slug}/scene-v${sceneVersion}.glb`;
 }
 
-export function createStaticSceneBootstrap(place: Place): SceneBootstrap {
+type CreateStaticSceneBootstrapOptions = {
+  assetAvailable?: boolean;
+};
+
+export function createStaticSceneBootstrap(
+  place: Place,
+  options: CreateStaticSceneBootstrapOptions = {},
+): SceneBootstrap {
   const pkg = PLACE_PACKAGES[place.slug];
   const sceneVersion = 1;
 
@@ -24,6 +31,7 @@ export function createStaticSceneBootstrap(place: Place): SceneBootstrap {
   }
 
   const assetUrl = toAssetUrl(pkg.slug, sceneVersion);
+  const assetAvailable = options.assetAvailable ?? false;
 
   return validateSceneBootstrap({
     placeId: place.id,
@@ -31,7 +39,7 @@ export function createStaticSceneBootstrap(place: Place): SceneBootstrap {
     sceneVersion,
     geometryId: `${pkg.slug}:v${sceneVersion}`,
     assetUrl,
-    assetAvailable: false,
+    assetAvailable,
     sceneEndpoints: {
       mapping: `/api/scene/${pkg.slug}/mapping`,
       package: `/api/scene/${pkg.slug}/package`,

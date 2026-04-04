@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { access } from "node:fs/promises";
+import path from "node:path";
 import { MVP_PLACES } from "../../../../../data/places";
 import { createStaticSceneBootstrap } from "../../../../../shared/scene";
 import { createLogger, toErrorContext } from "../../../../../shared/logger";
@@ -7,6 +9,22 @@ const logger = createLogger("api:scene:bootstrap");
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function toPublicAssetFilePath(assetUrl: string) {
+  const normalized = assetUrl.startsWith("/") ? assetUrl.slice(1) : assetUrl;
+  return path.join(process.cwd(), "public", normalized);
+}
+
+async function checkAssetAvailable(assetUrl: string) {
+  const assetPath = toPublicAssetFilePath(assetUrl);
+
+  try {
+    await access(assetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(
   _request: NextRequest,
@@ -28,7 +46,17 @@ export async function GET(
       );
     }
 
-    const bootstrap = createStaticSceneBootstrap(place);
+    const defaultBootstrap = createStaticSceneBootstrap(place);
+    const assetAvailable = await checkAssetAvailable(defaultBootstrap.assetUrl);
+    const bootstrap = createStaticSceneBootstrap(place, {
+      assetAvailable,
+    });
+
+    logger.debug("Serving scene bootstrap", {
+      slug,
+      assetUrl: bootstrap.assetUrl,
+      assetAvailable: bootstrap.assetAvailable,
+    });
 
     return NextResponse.json(bootstrap, {
       status: 200,
