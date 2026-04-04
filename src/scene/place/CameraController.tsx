@@ -4,6 +4,7 @@ import { useRef, useEffect, useCallback } from "react";
 import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { usePlaceStore } from "../../stores/placeStore";
+import type { InputPreset } from "../../stores/placeStore";
 import type { PlacePackage } from "../../data/placePackages";
 
 type CameraControllerProps = {
@@ -12,22 +13,27 @@ type CameraControllerProps = {
 
 type PlaceStoreState = {
   viewMode: "top" | "walk";
+  inputPreset: InputPreset;
   setViewMode: (m: "top" | "walk") => void;
 };
 
-const MOVE_SPEED = 5.2;
-const VERTICAL_SPEED = 3.2;
 const WALK_HEIGHT = 1.7;
 const TOP_HEIGHT = 80;
 const TOP_X = 0;
 const TOP_Y = 0;
 const TOP_Z = TOP_HEIGHT;
-const LOOK_SENSITIVITY = 0.0022;
 const MAX_PITCH = Math.PI * 0.46;
+
+const PRESET_CONFIG: Record<InputPreset, { moveSpeed: number; verticalSpeed: number; lookSensitivity: number }> = {
+  precision: { moveSpeed: 3.8, verticalSpeed: 2.4, lookSensitivity: 0.0015 },
+  balanced: { moveSpeed: 5.2, verticalSpeed: 3.2, lookSensitivity: 0.0022 },
+  fast: { moveSpeed: 7.1, verticalSpeed: 4.3, lookSensitivity: 0.003 },
+};
 
 export default function CameraController({ pkg }: CameraControllerProps) {
   const { camera } = useThree();
   const viewMode = usePlaceStore((s) => (s as PlaceStoreState).viewMode);
+  const inputPreset = usePlaceStore((s) => (s as PlaceStoreState).inputPreset);
   const setViewMode = usePlaceStore((s) => (s as PlaceStoreState).setViewMode);
 
   const keysRef = useRef<Set<string>>(new Set());
@@ -107,8 +113,9 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       if (viewMode !== "walk") return;
       if (!isMouseDraggingRef.current) return;
 
-      yawRef.current -= e.movementX * LOOK_SENSITIVITY;
-      pitchRef.current -= e.movementY * LOOK_SENSITIVITY;
+      const lookSensitivity = PRESET_CONFIG[inputPreset].lookSensitivity;
+      yawRef.current -= e.movementX * lookSensitivity;
+      pitchRef.current -= e.movementY * lookSensitivity;
       pitchRef.current = THREE.MathUtils.clamp(pitchRef.current, -MAX_PITCH, MAX_PITCH);
 
       applyLookQuaternion();
@@ -127,7 +134,7 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("mousemove", onMouseMove);
     };
-  }, [viewMode, setViewMode, applyLookQuaternion]);
+  }, [viewMode, inputPreset, setViewMode, applyLookQuaternion]);
 
   useFrame((_state, delta) => {
     if (!isWalkingRef.current) {
@@ -135,8 +142,9 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     }
 
     const keys = keysRef.current;
-    const moveDistance = MOVE_SPEED * delta;
-    const verticalDistance = VERTICAL_SPEED * delta;
+    const config = PRESET_CONFIG[inputPreset];
+    const moveDistance = config.moveSpeed * delta;
+    const verticalDistance = config.verticalSpeed * delta;
 
     const moveInput = new THREE.Vector3(
       Number(keys.has("d")) - Number(keys.has("a")),

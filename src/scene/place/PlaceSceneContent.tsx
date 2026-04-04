@@ -5,6 +5,9 @@ import { usePlaceStore } from "../../stores/placeStore";
 import { useAppStore } from "../../stores/appStore";
 import { PLACE_PACKAGES } from "../../data/placePackages";
 import { usePlaybackStore } from "../../stores/playbackStore";
+import { APP_CONFIG } from "../../shared/config";
+import { createLogger } from "../../shared/logger";
+import { createStaticGeometryMapping, createStaticSceneBootstrap } from "../../shared/scene";
 import StaticEnvironment from "./StaticEnvironment";
 import CameraController from "./CameraController";
 import PlaybackSystem from "./PlaybackSystem";
@@ -16,6 +19,8 @@ type PlaceSceneContentProps = {
   slug: string;
 };
 
+const logger = createLogger("scene:place-content");
+
 export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
   const pkg = PLACE_PACKAGES[slug];
   const setStatus = usePlaceStore((s) => s.setStatus);
@@ -25,13 +30,35 @@ export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
   const isNight = usePlaybackStore((s) => s.isNight());
   const weather = usePlaybackStore((s) => s.weather);
 
+  const bootstrap = createStaticSceneBootstrap({
+    id: slug,
+    slug,
+    name: slug,
+    lat: 0,
+    lng: 0,
+    city: "",
+    country: "",
+  });
+  const mapping = createStaticGeometryMapping(slug);
+
   useEffect(() => {
     if (!pkg) {
       setStatus("error");
+      logger.warn("Place package not found for slug", {
+        slug,
+      });
       return;
     }
+
+    logger.info("Bootstrapping place scene", {
+      slug,
+      geometryId: bootstrap.geometryId,
+      bindingCount: mapping.bindings.length,
+      assetUrl: bootstrap.assetUrl,
+    });
+
     setStatus("loading");
-    setProgress(10);
+    setProgress(APP_CONFIG.place.loading.initialProgress);
     setCurrentPlace({
       id: pkg.slug,
       slug: pkg.slug,
@@ -44,31 +71,50 @@ export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
     setMode("place");
 
     const timer = setTimeout(() => {
-      setProgress(100);
+      setProgress(APP_CONFIG.place.loading.completedProgress);
       setStatus("ready");
-    }, 600);
+      logger.info("Place scene ready", {
+        slug,
+      });
+    }, APP_CONFIG.place.loading.readyDelayMs);
 
     return () => clearTimeout(timer);
-  }, [pkg, setStatus, setProgress, setCurrentPlace, setMode]);
+  }, [
+    bootstrap.assetUrl,
+    bootstrap.geometryId,
+    mapping.bindings.length,
+    pkg,
+    setStatus,
+    setProgress,
+    setCurrentPlace,
+    setMode,
+    slug,
+  ]);
 
   if (!pkg) {
     return null;
   }
 
-  const ambientIntensity = isNight ? 0.28 : 1.0;
-  const ambientColor = isNight ? "#9ba4ff" : pkg.ambientColor;
-  const directionalIntensity = isNight ? 0.12 : 1.25;
-  const directionalColor = isNight ? "#9db5ff" : "#ffffff";
+  const ambientIntensity = isNight
+    ? APP_CONFIG.scene.light.night.ambientIntensity
+    : APP_CONFIG.scene.light.day.ambientIntensity;
+  const ambientColor = isNight ? APP_CONFIG.scene.light.night.ambientColor : pkg.ambientColor;
+  const directionalIntensity = isNight
+    ? APP_CONFIG.scene.light.night.directionalIntensity
+    : APP_CONFIG.scene.light.day.directionalIntensity;
+  const directionalColor = isNight
+    ? APP_CONFIG.scene.light.night.directionalColor
+    : APP_CONFIG.scene.light.day.directionalColor;
 
   return (
     <>
       <ambientLight intensity={ambientIntensity} color={ambientColor} />
       <directionalLight
-        position={[50, 80, 30]}
+        position={APP_CONFIG.scene.light.directionalPosition}
         intensity={directionalIntensity}
         color={directionalColor}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={APP_CONFIG.scene.light.directionalShadowMapSize}
       />
 
       <PlaybackSystem />

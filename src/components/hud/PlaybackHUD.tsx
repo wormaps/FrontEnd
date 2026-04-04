@@ -2,9 +2,11 @@
 
 import { usePlaybackStore } from "../../stores/playbackStore";
 import { usePlaceStore } from "../../stores/placeStore";
+import type { InputPreset } from "../../stores/placeStore";
 
 const SPEED_OPTIONS = [1, 2, 4];
 const WEATHER_OPTIONS = ["clear", "cloudy", "rain"] as const;
+const INPUT_PRESET_OPTIONS: InputPreset[] = ["precision", "balanced", "fast"];
 
 function formatTime(hour: number) {
   const normalized = ((hour % 24) + 24) % 24;
@@ -17,7 +19,9 @@ export default function PlaybackHUD() {
   const { isPlaying, speed, weather, currentTime, setIsPlaying, setSpeed, setWeather, setCurrentTime } =
     usePlaybackStore();
   const viewMode = usePlaceStore((s) => s.viewMode);
+  const inputPreset = usePlaceStore((s) => s.inputPreset);
   const setViewMode = usePlaceStore((s) => s.setViewMode);
+  const setInputPreset = usePlaceStore((s) => s.setInputPreset);
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3 pb-8">
@@ -91,11 +95,27 @@ export default function PlaybackHUD() {
         >
           {viewMode === "top" ? "탑뷰" : "워크뷰"}
         </button>
+
+        <div className="h-5 w-px bg-white/20" />
+
+        <div className="flex items-center gap-1">
+          {INPUT_PRESET_OPTIONS.map((preset) => (
+            <button
+              key={preset}
+              onClick={() => setInputPreset(preset)}
+              className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition ${
+                inputPreset === preset ? "bg-cyan-500 text-black" : "bg-white/10 hover:bg-white/20"
+              }`}
+            >
+              {preset}
+            </button>
+          ))}
+        </div>
       </div>
 
       {viewMode === "walk" && (
         <p className="rounded-lg bg-black/50 px-3 py-1.5 text-xs text-zinc-300 backdrop-blur-sm">
-          WASD 이동 · E 상승 / R 하강 · 마우스 좌클릭 드래그로 시야 회전 · V 탑뷰 전환 · ESC 복귀
+          WASD 이동 · E 상승 / R 하강 · 마우스 좌클릭 드래그로 시야 회전 · V 탑뷰 전환 · ESC 복귀 · precision/balanced/fast 감도
         </p>
       )}
     </div>

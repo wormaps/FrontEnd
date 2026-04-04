@@ -5,10 +5,15 @@ import { useRouter } from "next/navigation";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { useAppStore } from "../stores/appStore";
 import type { Place } from "../types/place";
+import { APP_CONFIG } from "../shared/config";
+import { createLogger, toErrorContext } from "../shared/logger";
+import { createStaticSceneBootstrap } from "../shared/scene";
 
 type GlobeSceneProps = {
   places: Place[];
 };
+
+const logger = createLogger("globe:scene");
 
 declare global {
   interface Window {
@@ -74,25 +79,36 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
       placeNameMap.clear();
 
       for (const place of places) {
+        const bootstrap = createStaticSceneBootstrap(place);
+        logger.debug("Prepared scene bootstrap for marker", {
+          placeId: place.id,
+          slug: place.slug,
+          geometryId: bootstrap.geometryId,
+          assetUrl: bootstrap.assetUrl,
+        });
+
         const entity = viewer.entities.add({
           id: place.id,
           name: place.name,
           position: Cesium.Cartesian3.fromDegrees(place.lng, place.lat, 0),
           point: {
-            pixelSize: 12,
+            pixelSize: APP_CONFIG.cesium.marker.pixelSize,
             color: Cesium.Color.CYAN,
             outlineColor: Cesium.Color.WHITE,
-            outlineWidth: 2,
+            outlineWidth: APP_CONFIG.cesium.marker.outlineWidth,
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
           label: {
             text: place.name,
-            font: "14px sans-serif",
+            font: APP_CONFIG.cesium.marker.labelFont,
             style: Cesium.LabelStyle.FILL_AND_OUTLINE,
             fillColor: Cesium.Color.WHITE,
             outlineColor: Cesium.Color.BLACK,
-            outlineWidth: 2,
-            pixelOffset: new Cesium.Cartesian2(0, -24),
+            outlineWidth: APP_CONFIG.cesium.marker.outlineWidth,
+            pixelOffset: new Cesium.Cartesian2(
+              APP_CONFIG.cesium.marker.labelOffset[0],
+              APP_CONFIG.cesium.marker.labelOffset[1],
+            ),
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
         });
@@ -102,7 +118,7 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
         placeNameMap.set(entityId, place.name);
       }
 
-      viewer.camera.flyHome(0);
+      viewer.camera.flyHome(APP_CONFIG.cesium.marker.flyHomeDuration);
 
       const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
       clickHandlerRef.current = handler;
@@ -121,11 +137,19 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
 
         setSelectedPlaceId(pickedId);
         setMode("loading");
+        logger.info("Place selected from globe", {
+          placeId: pickedId,
+          slug,
+        });
         router.push(`/place/${slug}`);
       }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     }
 
-    void initCesium();
+    void initCesium().catch((error) => {
+      logger.error("Failed to initialize Cesium scene", {
+        ...toErrorContext(error),
+      });
+    });
 
     return () => {
       isCancelled = true;

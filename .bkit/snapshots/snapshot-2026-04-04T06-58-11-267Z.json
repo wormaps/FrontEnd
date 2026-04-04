@@ -1,0 +1,28 @@
+{
+  "version": "3.0",
+  "lastUpdated": "2026-04-04T06:57:02.805Z",
+  "activeFeatures": {},
+  "primaryFeature": null,
+  "archivedFeatures": {},
+  "pipeline": {
+    "currentPhase": 1,
+    "level": "Starter",
+    "phaseHistory": []
+  },
+  "session": {
+    "startedAt": "2026-04-04T06:56:16.748Z",
+    "onboardingCompleted": false,
+    "lastActivity": "2026-04-04T06:57:02.767Z"
+  },
+  "history": [
+    {
+      "timestamp": "2026-04-04T06:57:02.768Z",
+      "action": "session_end",
+      "feature": null,
+      "details": "Session ended"
+    }
+  ],
+  "_snapshotTimestamp": "2026-04-04T06:58:11.268Z",
+  "_reason": "pre-compress",
+  "_jitPartial": false
+}

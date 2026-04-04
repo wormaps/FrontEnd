@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 export type ViewMode = "top" | "walk";
+export type InputPreset = "precision" | "balanced" | "fast";
 
 export type PlaceStatus = "idle" | "loading" | "ready" | "error";
 
@@ -15,19 +16,18 @@ export type Place = {
 };
 
 type PlaceStore = {
-  // Selected place
   currentPlace: Place | null;
   setCurrentPlace: (place: Place | null) => void;
 
-  // View mode (top / walk)
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
 
-  // Scene ready state
+  inputPreset: InputPreset;
+  setInputPreset: (preset: InputPreset) => void;
+
   status: PlaceStatus;
   setStatus: (status: PlaceStatus) => void;
 
-  // Loading progress (0–100)
   progress: number;
   setProgress: (progress: number) => void;
 };
@@ -38,6 +38,9 @@ export const usePlaceStore = create<PlaceStore>((set) => ({
 
   viewMode: "top",
   setViewMode: (mode) => set({ viewMode: mode }),
+
+  inputPreset: "balanced",
+  setInputPreset: (preset) => set({ inputPreset: preset }),
 
   status: "idle",
   setStatus: (status) => set({ status }),
