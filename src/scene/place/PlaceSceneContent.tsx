@@ -9,6 +9,8 @@ import StaticEnvironment from "./StaticEnvironment";
 import CameraController from "./CameraController";
 import PlaybackSystem from "./PlaybackSystem";
 import RainEffect from "./RainEffect";
+import PedestrianSystem from "./PedestrianSystem";
+import VehicleSystem from "./VehicleSystem";
 
 type PlaceSceneContentProps = {
   slug: string;
@@ -72,6 +74,9 @@ export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
       <PlaybackSystem />
 
       <StaticEnvironment pkg={pkg} />
+
+      <PedestrianSystem />
+      <VehicleSystem pkg={pkg} />
 
       {weather === "rain" ? <RainEffect /> : null}
 
