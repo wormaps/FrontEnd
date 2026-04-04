@@ -5,10 +5,16 @@ import { usePlaceStore } from "../../stores/placeStore";
 
 const SPEED_OPTIONS = [1, 2, 4];
 const WEATHER_OPTIONS = ["clear", "cloudy", "rain"] as const;
-const TIME_OPTIONS = ["day", "dusk", "night"] as const;
+
+function formatTime(hour: number) {
+  const normalized = ((hour % 24) + 24) % 24;
+  const h = Math.floor(normalized);
+  const m = Math.floor((normalized - h) * 60);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
 
 export default function PlaybackHUD() {
-  const { isPlaying, speed, weather, timeOfDay, setIsPlaying, setSpeed, setWeather, setTimeOfDay } =
+  const { isPlaying, speed, weather, currentTime, setIsPlaying, setSpeed, setWeather, setCurrentTime } =
     usePlaybackStore();
   const viewMode = usePlaceStore((s) => s.viewMode);
   const setViewMode = usePlaceStore((s) => s.setViewMode);
@@ -55,18 +61,24 @@ export default function PlaybackHUD() {
 
         <div className="h-5 w-px bg-white/20" />
 
+        <div className="flex items-center gap-2 rounded bg-white/10 px-2 py-1 text-xs">
+          <span className="text-zinc-300">Time</span>
+          <span className="font-semibold text-cyan-300 tabular-nums">{formatTime(currentTime)}</span>
+        </div>
+
         <div className="flex items-center gap-1">
-          {TIME_OPTIONS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTimeOfDay(t)}
-              className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition ${
-                timeOfDay === t ? "bg-cyan-500 text-black" : "bg-white/10 hover:bg-white/20"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+          <button
+            onClick={() => setCurrentTime(currentTime - 1)}
+            className="rounded px-2 py-1 text-xs font-medium bg-white/10 hover:bg-white/20 transition"
+          >
+            -1h
+          </button>
+          <button
+            onClick={() => setCurrentTime(currentTime + 1)}
+            className="rounded px-2 py-1 text-xs font-medium bg-white/10 hover:bg-white/20 transition"
+          >
+            +1h
+          </button>
         </div>
 
         <div className="h-5 w-px bg-white/20" />

@@ -7,58 +7,66 @@ export type PedestrianLevel = "low" | "medium" | "high";
 export type VehicleLevel = "low" | "medium" | "high";
 
 type PlaybackStore = {
-  // Time
-  currentTime: number; // 0–24 (hour)
+  currentTime: number;
   setCurrentTime: (time: number) => void;
 
-  // Playback
   isPlaying: boolean;
-  speed: number; // 1 = real-time, 2 = 2x, 4 = 4x, etc.
+  speed: number;
   setIsPlaying: (playing: boolean) => void;
   setSpeed: (speed: number) => void;
   togglePlayback: () => void;
+  advanceTime: (deltaHours: number) => void;
 
-  // Weather
   weather: WeatherMode;
   setWeather: (weather: WeatherMode) => void;
 
-  // Time of day
-  timeOfDay: TimeOfDay;
-  setTimeOfDay: (tod: TimeOfDay) => void;
-
-  // Simulation levels
   pedestrianLevel: PedestrianLevel;
   vehicleLevel: VehicleLevel;
   setPedestrianLevel: (level: PedestrianLevel) => void;
   setVehicleLevel: (level: VehicleLevel) => void;
 
-  // Computed helpers
+  getTimeOfDay: () => TimeOfDay;
   isNight: () => boolean;
 };
 
+function normalizeHour(hour: number) {
+  const mod = hour % 24;
+  return mod < 0 ? mod + 24 : mod;
+}
+
+function hourToTimeOfDay(hour: number): TimeOfDay {
+  const h = normalizeHour(hour);
+  if (h >= 6 && h < 17) return "day";
+  if (h >= 17 && h < 20) return "dusk";
+  return "night";
+}
+
 export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   currentTime: 12,
-  setCurrentTime: (time) => set({ currentTime: time }),
+  setCurrentTime: (time) => set({ currentTime: normalizeHour(time) }),
 
   isPlaying: false,
   speed: 1,
   setIsPlaying: (playing) => set({ isPlaying: playing }),
-  setSpeed: (speed) => set({ speed: speed }),
+  setSpeed: (speed) => set({ speed }),
   togglePlayback: () => set((state) => ({ isPlaying: !state.isPlaying })),
+  advanceTime: (deltaHours) =>
+    set((state) => ({ currentTime: normalizeHour(state.currentTime + deltaHours) })),
 
   weather: "clear",
   setWeather: (weather) => set({ weather }),
-
-  timeOfDay: "day",
-  setTimeOfDay: (tod) => set({ timeOfDay: tod }),
 
   pedestrianLevel: "medium",
   vehicleLevel: "medium",
   setPedestrianLevel: (level) => set({ pedestrianLevel: level }),
   setVehicleLevel: (level) => set({ vehicleLevel: level }),
 
+  getTimeOfDay: () => {
+    const { currentTime } = get();
+    return hourToTimeOfDay(currentTime);
+  },
   isNight: () => {
-    const { timeOfDay } = get();
-    return timeOfDay === "night";
+    const { currentTime } = get();
+    return hourToTimeOfDay(currentTime) === "night";
   },
 }));

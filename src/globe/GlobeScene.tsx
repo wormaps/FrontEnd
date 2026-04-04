@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import { useAppStore } from "../stores/appStore";
 import type { Place } from "../types/place";
 
 type GlobeSceneProps = {
@@ -17,6 +18,8 @@ declare global {
 
 export default function GlobeScene({ places }: GlobeSceneProps) {
   const router = useRouter();
+  const setSelectedPlaceId = useAppStore((s) => s.setSelectedPlaceId);
+  const setMode = useAppStore((s) => s.setMode);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<import("cesium").Viewer | null>(null);
   const clickHandlerRef = useRef<import("cesium").ScreenSpaceEventHandler | null>(
@@ -24,7 +27,6 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
   );
   const entityMapRef = useRef<Map<string, string>>(new Map());
   const nameMapRef = useRef<Map<string, string>>(new Map());
-  const [activePlaceName, setActivePlaceName] = useState<string | null>(null);
 
   const markerSummary = useMemo(
     () => places.map((place) => place.name).join(" · "),
@@ -112,13 +114,13 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
 
         const pickedId = String(picked.id.id);
         const slug = slugMap.get(pickedId);
-        const label = placeNameMap.get(pickedId);
 
         if (!slug) {
           return;
         }
 
-        setActivePlaceName(label ?? pickedId);
+        setSelectedPlaceId(pickedId);
+        setMode("loading");
         router.push(`/place/${slug}`);
       }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     }
@@ -141,7 +143,7 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
       slugMap.clear();
       placeNameMap.clear();
     };
-  }, [places, router]);
+  }, [places, router, setMode, setSelectedPlaceId]);
 
   return (
     <div className="relative flex min-h-screen w-full">
@@ -149,7 +151,7 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
       <div className="pointer-events-none absolute bottom-4 left-4 z-10 rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-xs text-zinc-200 backdrop-blur-sm">
         <p>Markers: {markerSummary}</p>
         <p className="mt-1 text-cyan-300">
-          {activePlaceName ? `선택됨: ${activePlaceName}` : "마커를 클릭해 Place Scene으로 이동"}
+          마커를 클릭해 Place Scene으로 이동
         </p>
       </div>
     </div>
