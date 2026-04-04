@@ -1,0 +1,91 @@
+"use client";
+
+import { usePlaybackStore } from "../../stores/playbackStore";
+import { usePlaceStore } from "../../stores/placeStore";
+
+const SPEED_OPTIONS = [1, 2, 4];
+const WEATHER_OPTIONS = ["clear", "cloudy", "rain"] as const;
+const TIME_OPTIONS = ["day", "dusk", "night"] as const;
+
+export default function PlaybackHUD() {
+  const { isPlaying, speed, weather, timeOfDay, setIsPlaying, setSpeed, setWeather, setTimeOfDay } =
+    usePlaybackStore();
+  const viewMode = usePlaceStore((s) => s.viewMode);
+  const setViewMode = usePlaceStore((s) => s.setViewMode);
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3 pb-8">
+      <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/10 bg-black/60 px-5 py-3 text-white backdrop-blur-md">
+        <button
+          onClick={() => setIsPlaying(!isPlaying)}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-sm font-bold transition hover:bg-white/20"
+        >
+          {isPlaying ? "⏸" : "▶"}
+        </button>
+
+        <div className="flex items-center gap-1">
+          {SPEED_OPTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => setSpeed(s)}
+              className={`rounded px-2.5 py-1 text-xs font-medium transition ${
+                speed === s ? "bg-cyan-500 text-black" : "bg-white/10 hover:bg-white/20"
+              }`}
+            >
+              {s}×
+            </button>
+          ))}
+        </div>
+
+        <div className="h-5 w-px bg-white/20" />
+
+        <div className="flex items-center gap-1">
+          {WEATHER_OPTIONS.map((w) => (
+            <button
+              key={w}
+              onClick={() => setWeather(w)}
+              className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition ${
+                weather === w ? "bg-cyan-500 text-black" : "bg-white/10 hover:bg-white/20"
+              }`}
+            >
+              {w}
+            </button>
+          ))}
+        </div>
+
+        <div className="h-5 w-px bg-white/20" />
+
+        <div className="flex items-center gap-1">
+          {TIME_OPTIONS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTimeOfDay(t)}
+              className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition ${
+                timeOfDay === t ? "bg-cyan-500 text-black" : "bg-white/10 hover:bg-white/20"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        <div className="h-5 w-px bg-white/20" />
+
+        <button
+          onClick={() => setViewMode(viewMode === "top" ? "walk" : "top")}
+          className={`rounded px-3 py-1 text-xs font-medium capitalize transition ${
+            viewMode === "top" ? "bg-white/10 hover:bg-white/20" : "bg-cyan-500 text-black"
+          }`}
+        >
+          {viewMode === "top" ? "탑뷰" : "워크뷰"}
+        </button>
+      </div>
+
+      {viewMode === "walk" && (
+        <p className="rounded-lg bg-black/50 px-3 py-1.5 text-xs text-zinc-300 backdrop-blur-sm">
+          WASD 이동 · V키로 탑뷰 전환 · ESC로 탑뷰 복귀
+        </p>
+      )}
+    </div>
+  );
+}
