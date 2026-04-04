@@ -1,6 +1,11 @@
 import { PLACE_PACKAGES } from "../../data/placePackages";
 import type { Place } from "../../types/place";
-import type { GeometryLiveMapping, SceneBootstrap } from "../contracts";
+import {
+  type GeometryLiveMapping,
+  type SceneBootstrap,
+  validateGeometryLiveMapping,
+  validateSceneBootstrap,
+} from "../contracts";
 
 function toLiveStateEndpoint(baseSlug: string, kind: "traffic" | "weather" | "places") {
   return `/api/live/${baseSlug}/${kind}`;
@@ -11,31 +16,19 @@ export function createStaticSceneBootstrap(place: Place): SceneBootstrap {
   const sceneVersion = 1;
 
   if (!pkg) {
-    return {
-      placeId: place.id,
-      slug: place.slug,
-      sceneVersion,
-      geometryId: `${place.slug}:missing`,
-      assetUrl: "",
-      liveEndpoints: {
-        traffic: toLiveStateEndpoint(place.slug, "traffic"),
-        weather: toLiveStateEndpoint(place.slug, "weather"),
-        places: toLiveStateEndpoint(place.slug, "places"),
-      },
-      cacheTtlSeconds: {
-        traffic: 30,
-        weather: 300,
-        places: 120,
-      },
-    };
+    throw new Error(`Place package not found for slug: ${place.slug}`);
   }
 
-  return {
+  return validateSceneBootstrap({
     placeId: place.id,
     slug: place.slug,
     sceneVersion,
     geometryId: `${pkg.slug}:v${sceneVersion}`,
     assetUrl: `/assets/places/${pkg.slug}/scene-v${sceneVersion}.glb`,
+    sceneEndpoints: {
+      mapping: `/api/scene/${pkg.slug}/mapping`,
+      package: `/api/scene/${pkg.slug}/package`,
+    },
     liveEndpoints: {
       traffic: toLiveStateEndpoint(pkg.slug, "traffic"),
       weather: toLiveStateEndpoint(pkg.slug, "weather"),
@@ -46,7 +39,7 @@ export function createStaticSceneBootstrap(place: Place): SceneBootstrap {
       weather: 300,
       places: 120,
     },
-  };
+  });
 }
 
 export function createStaticGeometryMapping(slug: string): GeometryLiveMapping {
@@ -54,10 +47,7 @@ export function createStaticGeometryMapping(slug: string): GeometryLiveMapping {
   const geometryId = `${slug}:v1`;
 
   if (!pkg) {
-    return {
-      geometryId,
-      bindings: [],
-    };
+    throw new Error(`Place package not found for slug: ${slug}`);
   }
 
   const buildingBindings = pkg.buildings.map((building) => ({
@@ -72,8 +62,8 @@ export function createStaticGeometryMapping(slug: string): GeometryLiveMapping {
     tags: ["traffic-sensitive"],
   }));
 
-  return {
+  return validateGeometryLiveMapping({
     geometryId,
     bindings: [...buildingBindings, ...roadBindings],
-  };
+  });
 }

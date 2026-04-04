@@ -18,10 +18,8 @@ export type Logger = {
   scope: string;
   debug: LogMethod;
   info: LogMethod;
-  log: LogMethod;
   warn: LogMethod;
   error: LogMethod;
-  err: LogMethod;
   child: (scope: string) => Logger;
 };
 
@@ -33,9 +31,10 @@ const LOG_LEVEL_WEIGHT: Record<LogLevel, number> = {
 };
 
 function resolveLogLevel(): LogLevel {
-  const configuredLevel =
-    process.env.NEXT_PUBLIC_LOG_LEVEL?.toLowerCase() ??
-    process.env.LOG_LEVEL?.toLowerCase();
+  const publicLevel = process.env.NEXT_PUBLIC_LOG_LEVEL?.toLowerCase();
+  const serverLevel =
+    typeof window === "undefined" ? process.env.LOG_LEVEL?.toLowerCase() : undefined;
+  const configuredLevel = publicLevel ?? serverLevel;
 
   if (
     configuredLevel === "debug" ||
@@ -125,10 +124,8 @@ export function createLogger(scope: string): Logger {
     scope,
     debug: write("debug"),
     info: write("info"),
-    log: write("info"),
     warn: write("warn"),
     error: write("error"),
-    err: write("error"),
     child: (childScope: string) => createLogger(`${scope}:${childScope}`),
   };
 }
