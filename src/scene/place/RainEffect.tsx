@@ -4,7 +4,7 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
-const DROP_COUNT = 700;
+const DROP_COUNT = 520;
 const SPAWN_RADIUS = 70;
 const MIN_Y = 2;
 const MAX_Y = 70;

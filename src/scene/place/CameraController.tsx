@@ -15,87 +15,166 @@ type PlaceStoreState = {
   setViewMode: (m: "top" | "walk") => void;
 };
 
-const WASD_SPEED = 0.25;
+const MOVE_SPEED = 5.2;
+const VERTICAL_SPEED = 3.2;
 const WALK_HEIGHT = 1.7;
 const TOP_HEIGHT = 80;
 const TOP_X = 0;
 const TOP_Y = 0;
 const TOP_Z = TOP_HEIGHT;
+const LOOK_SENSITIVITY = 0.0022;
+const MAX_PITCH = Math.PI * 0.46;
 
 export default function CameraController({ pkg }: CameraControllerProps) {
   const { camera } = useThree();
   const viewMode = usePlaceStore((s) => (s as PlaceStoreState).viewMode);
   const setViewMode = usePlaceStore((s) => (s as PlaceStoreState).setViewMode);
-  const keys = useRef<Set<string>>(new Set());
-  const isWalking = useRef(false);
-  const targetPosition = useRef(new THREE.Vector3(TOP_X, TOP_Y, TOP_Z));
+
+  const keysRef = useRef<Set<string>>(new Set());
+  const isWalkingRef = useRef(false);
+  const isMouseDraggingRef = useRef(false);
+  const yawRef = useRef(0);
+  const pitchRef = useRef(0);
+
+  const boundsRef = useRef({ min: -48, max: 48 });
+
+  const applyLookQuaternion = useCallback(() => {
+    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yawRef.current);
+    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitchRef.current);
+    camera.quaternion.copy(qYaw).multiply(qPitch);
+  }, [camera]);
 
   const switchToTop = useCallback(() => {
-    targetPosition.current.set(TOP_X, TOP_Y, TOP_Z);
     camera.position.set(TOP_X, TOP_Y, TOP_Z);
     camera.lookAt(0, 0, 0);
   }, [camera]);
 
   const switchToWalk = useCallback(() => {
     const [wx, wy, wz] = pkg.walkStartPosition;
-    targetPosition.current.set(wx, wy, wz);
     camera.position.set(wx, wy, wz);
-    camera.lookAt(0, 1, 0);
-  }, [camera, pkg.walkStartPosition]);
+    yawRef.current = 0;
+    pitchRef.current = 0;
+    applyLookQuaternion();
+  }, [camera, pkg.walkStartPosition, applyLookQuaternion]);
+
+  useEffect(() => {
+    const maxAbs = Math.max(
+      ...pkg.roads.flatMap((r) => [Math.abs(r.start[0]), Math.abs(r.start[1]), Math.abs(r.end[0]), Math.abs(r.end[1])]),
+      48,
+    );
+    boundsRef.current = { min: -maxAbs - 6, max: maxAbs + 6 };
+  }, [pkg]);
 
   useEffect(() => {
     if (viewMode === "top") {
       switchToTop();
-      isWalking.current = false;
+      isWalkingRef.current = false;
     } else {
       switchToWalk();
-      isWalking.current = true;
+      isWalkingRef.current = true;
     }
   }, [viewMode, switchToTop, switchToWalk]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      keys.current.add(e.key.toLowerCase());
-      if (e.key === "v" || e.key === "V") {
+      const key = e.key.toLowerCase();
+      keysRef.current.add(key);
+
+      if (key === "v") {
         setViewMode(viewMode === "top" ? "walk" : "top");
       }
-      if (e.key === "Escape" && viewMode === "walk") {
+
+      if (key === "escape" && viewMode === "walk") {
         setViewMode("top");
       }
     };
+
     const onKeyUp = (e: KeyboardEvent) => {
-      keys.current.delete(e.key.toLowerCase());
+      keysRef.current.delete(e.key.toLowerCase());
     };
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (viewMode !== "walk") return;
+      if (e.button !== 0) return;
+      isMouseDraggingRef.current = true;
+    };
+
+    const onMouseUp = () => {
+      isMouseDraggingRef.current = false;
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (viewMode !== "walk") return;
+      if (!isMouseDraggingRef.current) return;
+
+      yawRef.current -= e.movementX * LOOK_SENSITIVITY;
+      pitchRef.current -= e.movementY * LOOK_SENSITIVITY;
+      pitchRef.current = THREE.MathUtils.clamp(pitchRef.current, -MAX_PITCH, MAX_PITCH);
+
+      applyLookQuaternion();
+    };
+
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("mousemove", onMouseMove);
+
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("mousemove", onMouseMove);
     };
-  }, [viewMode, setViewMode]);
+  }, [viewMode, setViewMode, applyLookQuaternion]);
 
-  useFrame(() => {
-    if (!isWalking.current) return;
-
-    const k = keys.current;
-    const speed = WASD_SPEED;
-    const direction = new THREE.Vector3();
-
-    if (k.has("w")) direction.z -= speed;
-    if (k.has("s")) direction.z += speed;
-    if (k.has("a")) direction.x -= speed;
-    if (k.has("d")) direction.x += speed;
-
-    if (direction.lengthSq() > 0) {
-      direction.normalize().multiplyScalar(speed);
-      camera.translateX(-direction.x);
-      camera.translateZ(direction.z);
-      camera.position.set(
-        camera.position.x,
-        THREE.MathUtils.lerp(camera.position.y, WALK_HEIGHT, 0.15),
-        camera.position.z,
-      );
+  useFrame((_state, delta) => {
+    if (!isWalkingRef.current) {
+      return;
     }
+
+    const keys = keysRef.current;
+    const moveDistance = MOVE_SPEED * delta;
+    const verticalDistance = VERTICAL_SPEED * delta;
+
+    const moveInput = new THREE.Vector3(
+      Number(keys.has("d")) - Number(keys.has("a")),
+      0,
+      Number(keys.has("s")) - Number(keys.has("w")),
+    );
+
+    if (moveInput.lengthSq() > 0) {
+      moveInput.normalize().multiplyScalar(moveDistance);
+
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      forward.y = 0;
+      forward.normalize();
+
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+      right.y = 0;
+      right.normalize();
+
+      camera.position.addScaledVector(right, moveInput.x);
+      camera.position.addScaledVector(forward, -moveInput.z);
+    }
+
+    let nextY = camera.position.y;
+
+    if (keys.has("e")) {
+      nextY += verticalDistance;
+    }
+
+    if (keys.has("r")) {
+      nextY -= verticalDistance;
+    }
+
+    const { min, max } = boundsRef.current;
+    camera.position.set(
+      THREE.MathUtils.clamp(camera.position.x, min, max),
+      THREE.MathUtils.clamp(nextY, WALK_HEIGHT - 0.4, WALK_HEIGHT + 3.2),
+      THREE.MathUtils.clamp(camera.position.z, min, max),
+    );
   });
 
   return null;

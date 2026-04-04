@@ -57,7 +57,7 @@ export default function PedestrianSystem() {
       if (i < activeCount && isPlaying) {
         const dt = delta * speedScale;
 
-        w.dir += rand(-0.8, 0.8) * dt * 0.5;
+        w.dir += Math.sin(i * 1.73 + w.x * 0.12 + w.z * 0.07) * dt * 0.28;
         w.x += Math.cos(w.dir) * w.speed * dt;
         w.z += Math.sin(w.dir) * w.speed * dt;
 

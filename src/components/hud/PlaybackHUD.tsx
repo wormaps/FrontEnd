@@ -95,7 +95,7 @@ export default function PlaybackHUD() {
 
       {viewMode === "walk" && (
         <p className="rounded-lg bg-black/50 px-3 py-1.5 text-xs text-zinc-300 backdrop-blur-sm">
-          WASD 이동 · V키로 탑뷰 전환 · ESC로 탑뷰 복귀
+          WASD 이동 · E 상승 / R 하강 · 마우스 좌클릭 드래그로 시야 회전 · V 탑뷰 전환 · ESC 복귀
         </p>
       )}
     </div>
