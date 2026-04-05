@@ -25,6 +25,11 @@ export const APP_CONFIG = {
     camera: {
       walkHeight: 1.7,
       topViewPosition: [0, 0, 80] as const,
+      topViewZoomRange: {
+        minZ: 32,
+        maxZ: 140,
+      },
+      topViewWheelZoomMultiplier: 0.028,
       maxPitchRadians: Math.PI * 0.46,
       boundsFallbackMaxAbs: 48,
       boundsPadding: 6,
@@ -37,6 +42,7 @@ export const APP_CONFIG = {
         touchLookMultiplier: 0.9,
         wheelDominantAxisRatio: 1.2,
         wheelZoomMultiplier: 0.012,
+        pinchZoomMultiplier: 0.02,
       },
       inputPreset: {
         precision: {

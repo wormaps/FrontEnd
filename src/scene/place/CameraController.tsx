@@ -141,6 +141,21 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     };
 
     const onWheel = (e: WheelEvent) => {
+      if (viewMode === "top") {
+        e.preventDefault();
+        const [topX, topY] = CAMERA_CONFIG.topViewPosition;
+        const minZ = CAMERA_CONFIG.topViewZoomRange.minZ;
+        const maxZ = CAMERA_CONFIG.topViewZoomRange.maxZ;
+        const nextZ = THREE.MathUtils.clamp(
+          camera.position.z + e.deltaY * CAMERA_CONFIG.topViewWheelZoomMultiplier,
+          minZ,
+          maxZ,
+        );
+        camera.position.set(topX, topY, nextZ);
+        camera.lookAt(0, 0, 0);
+        return;
+      }
+
       if (viewMode !== "walk") return;
 
       const absX = Math.abs(e.deltaX);
@@ -148,14 +163,40 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       const dominantRatio = CAMERA_CONFIG.gesture.wheelDominantAxisRatio;
 
       const isHorizontalLook = absX > absY * dominantRatio;
-      const isPinchLikeLook = e.ctrlKey || e.metaKey;
-      const isVerticalZoom = absY > absX * dominantRatio && !isPinchLikeLook;
+      const isPinchLikeZoom = e.ctrlKey || e.metaKey;
+      const isVerticalZoom = absY > absX * dominantRatio && !isPinchLikeZoom;
 
-      if (!isHorizontalLook && !isPinchLikeLook && !isVerticalZoom) {
+      if (!isHorizontalLook && !isPinchLikeZoom && !isVerticalZoom) {
         return;
       }
 
       e.preventDefault();
+
+      if (isPinchLikeZoom) {
+        const zoomForward = zoomForwardRef.current;
+        zoomForward.set(0, 0, -1).applyQuaternion(camera.quaternion);
+        zoomForward.y = 0;
+
+        if (zoomForward.lengthSq() > 0) {
+          zoomForward.normalize();
+          const zoomDistance = e.deltaY * CAMERA_CONFIG.gesture.pinchZoomMultiplier;
+          const { min, max } = boundsRef.current;
+          const nextX = THREE.MathUtils.clamp(
+            camera.position.x + zoomForward.x * zoomDistance,
+            min,
+            max,
+          );
+          const nextZ = THREE.MathUtils.clamp(
+            camera.position.z + zoomForward.z * zoomDistance,
+            min,
+            max,
+          );
+
+          camera.position.set(nextX, camera.position.y, nextZ);
+        }
+
+        return;
+      }
 
       if (isVerticalZoom) {
         const zoomForward = zoomForwardRef.current;
@@ -184,7 +225,7 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       }
 
       const deltaX = isHorizontalLook ? e.deltaX : 0;
-      const deltaY = isPinchLikeLook ? e.deltaY : 0;
+      const deltaY = 0;
 
       applyLookDelta(
         deltaX,
