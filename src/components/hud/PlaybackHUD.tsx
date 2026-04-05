@@ -46,7 +46,7 @@ export default function PlaybackHUD() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsPlaying(!isPlaying)}
-            className={`glass-button h-11 w-11 ${isPlaying ? "bg-white/20" : "bg-cyan-500/20 text-cyan-300"}`}
+            className={`glass-button h-11 w-11 ${isPlaying ? "bg-white/20" : "surface-accent text-accent-primary"}`}
             title={isPlaying ? "일시정지" : "재생"}
           >
             {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} className="ml-0.5" fill="currentColor" />}
@@ -66,7 +66,7 @@ export default function PlaybackHUD() {
           </div>
         </div>
 
-        <div className="h-6 w-px bg-white/10" />
+        <div className="divider-vertical" />
 
         {/* Weather Controls */}
         <div className="flex items-center gap-1.5">
@@ -83,13 +83,13 @@ export default function PlaybackHUD() {
           ))}
         </div>
 
-        <div className="h-6 w-px bg-white/10" />
+        <div className="divider-vertical" />
 
         {/* Time Controls */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5">
-            <Clock size={14} className="text-zinc-400" />
-            <span className="text-sm font-bold text-cyan-300 tabular-nums tracking-wider">
+          <div className="surface-muted flex items-center gap-2 rounded-xl px-3 py-1.5">
+            <Clock size={14} className="text-muted-strong" />
+            <span className="text-accent-primary text-sm font-bold tabular-nums tracking-wider">
               {formatTime(currentTime)}
             </span>
           </div>
@@ -112,7 +112,7 @@ export default function PlaybackHUD() {
           </div>
         </div>
 
-        <div className="h-6 w-px bg-white/10" />
+        <div className="divider-vertical" />
 
         {/* View Mode Toggle */}
         <button
@@ -125,7 +125,7 @@ export default function PlaybackHUD() {
           {viewMode === "top" ? "TOP VIEW" : "WALK VIEW"}
         </button>
 
-        <div className="h-6 w-px bg-white/10" />
+        <div className="divider-vertical" />
 
         {/* Sensitivity / Input Presets */}
         <div className="flex items-center gap-1.5">
@@ -145,8 +145,8 @@ export default function PlaybackHUD() {
 
       {viewMode === "walk" && (
         <Panel className="animate-in fade-in slide-in-from-bottom-2 duration-500 px-4 py-2">
-          <p className="text-[11px] font-medium text-zinc-300 tracking-tight">
-            <span className="text-cyan-400 font-bold">WASD</span> 이동 · <span className="text-cyan-400 font-bold">E/R</span> 상승/하강 · <span className="text-cyan-400 font-bold">드래그</span> 회전 · <span className="text-cyan-400 font-bold">V</span> 탑뷰 · <span className="text-cyan-400 font-bold">ESC</span> 복귀
+          <p className="text-[11px] font-medium tracking-tight text-zinc-300">
+            <span className="text-accent-strong font-bold">WASD</span> 이동 · <span className="text-accent-strong font-bold">E/R</span> 상승/하강 · <span className="text-accent-strong font-bold">드래그</span> 회전 · <span className="text-accent-strong font-bold">V</span> 탑뷰 · <span className="text-accent-strong font-bold">ESC</span> 복귀
           </p>
         </Panel>
       )}
