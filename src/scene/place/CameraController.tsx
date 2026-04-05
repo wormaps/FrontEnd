@@ -8,6 +8,10 @@ import type { InputPreset } from "../../stores/placeStore";
 import type { PlacePackage } from "../../data/placePackages";
 import { APP_CONFIG } from "../../shared/config";
 
+type GestureEventWithScale = Event & {
+  scale?: number;
+};
+
 type CameraControllerProps = {
   pkg: PlacePackage;
 };
@@ -44,6 +48,7 @@ export default function CameraController({ pkg }: CameraControllerProps) {
   const forwardRef = useRef(new THREE.Vector3());
   const rightRef = useRef(new THREE.Vector3());
   const zoomForwardRef = useRef(new THREE.Vector3());
+  const pinchScalePrevRef = useRef<number | null>(null);
 
   const boundsRef = useRef<CameraBounds>({
     min: -CAMERA_CONFIG.boundsFallbackMaxAbs,
@@ -84,6 +89,39 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     pitchRef.current = 0;
     applyLookQuaternion();
   }, [camera, pkg.walkStartPosition, applyLookQuaternion]);
+
+  const applyForwardZoom = useCallback(
+    (delta: number, multiplier: number) => {
+      if (viewMode !== "walk") {
+        return;
+      }
+
+      const zoomForward = zoomForwardRef.current;
+      zoomForward.set(0, 0, -1).applyQuaternion(camera.quaternion);
+      zoomForward.y = 0;
+
+      if (zoomForward.lengthSq() <= 0) {
+        return;
+      }
+
+      zoomForward.normalize();
+      const zoomDistance = delta * multiplier;
+      const { min, max } = boundsRef.current;
+      const nextX = THREE.MathUtils.clamp(
+        camera.position.x + zoomForward.x * zoomDistance,
+        min,
+        max,
+      );
+      const nextZ = THREE.MathUtils.clamp(
+        camera.position.z + zoomForward.z * zoomDistance,
+        min,
+        max,
+      );
+
+      camera.position.set(nextX, camera.position.y, nextZ);
+    },
+    [camera, viewMode],
+  );
 
   useEffect(() => {
     const maxAbs = Math.max(
@@ -173,53 +211,13 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       e.preventDefault();
 
       if (isPinchLikeZoom) {
-        const zoomForward = zoomForwardRef.current;
-        zoomForward.set(0, 0, -1).applyQuaternion(camera.quaternion);
-        zoomForward.y = 0;
-
-        if (zoomForward.lengthSq() > 0) {
-          zoomForward.normalize();
-          const zoomDistance = e.deltaY * CAMERA_CONFIG.gesture.pinchZoomMultiplier;
-          const { min, max } = boundsRef.current;
-          const nextX = THREE.MathUtils.clamp(
-            camera.position.x + zoomForward.x * zoomDistance,
-            min,
-            max,
-          );
-          const nextZ = THREE.MathUtils.clamp(
-            camera.position.z + zoomForward.z * zoomDistance,
-            min,
-            max,
-          );
-
-          camera.position.set(nextX, camera.position.y, nextZ);
-        }
+        applyForwardZoom(e.deltaY, CAMERA_CONFIG.gesture.pinchZoomMultiplier);
 
         return;
       }
 
       if (isVerticalZoom) {
-        const zoomForward = zoomForwardRef.current;
-        zoomForward.set(0, 0, -1).applyQuaternion(camera.quaternion);
-        zoomForward.y = 0;
-
-        if (zoomForward.lengthSq() > 0) {
-          zoomForward.normalize();
-          const zoomDistance = e.deltaY * CAMERA_CONFIG.gesture.wheelZoomMultiplier;
-          const { min, max } = boundsRef.current;
-          const nextX = THREE.MathUtils.clamp(
-            camera.position.x + zoomForward.x * zoomDistance,
-            min,
-            max,
-          );
-          const nextZ = THREE.MathUtils.clamp(
-            camera.position.z + zoomForward.z * zoomDistance,
-            min,
-            max,
-          );
-
-          camera.position.set(nextX, camera.position.y, nextZ);
-        }
+        applyForwardZoom(e.deltaY, CAMERA_CONFIG.gesture.wheelZoomMultiplier);
 
         return;
       }
@@ -276,6 +274,54 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       touchPrevRef.current = null;
     };
 
+    const onGestureStart = (event: Event) => {
+      const e = event as GestureEventWithScale;
+      if (viewMode !== "walk") {
+        return;
+      }
+
+      if (typeof e.scale !== "number") {
+        return;
+      }
+
+      pinchScalePrevRef.current = e.scale;
+      event.preventDefault();
+    };
+
+    const onGestureChange = (event: Event) => {
+      const e = event as GestureEventWithScale;
+      if (viewMode !== "walk") {
+        return;
+      }
+
+      if (typeof e.scale !== "number") {
+        return;
+      }
+
+      const previousScale = pinchScalePrevRef.current;
+      if (previousScale === null) {
+        pinchScalePrevRef.current = e.scale;
+        return;
+      }
+
+      const deltaScale = e.scale - previousScale;
+      pinchScalePrevRef.current = e.scale;
+
+      if (Math.abs(deltaScale) < 0.001) {
+        return;
+      }
+
+      event.preventDefault();
+      applyForwardZoom(
+        -deltaScale,
+        CAMERA_CONFIG.gesture.pinchGestureZoomMultiplier,
+      );
+    };
+
+    const onGestureEnd = () => {
+      pinchScalePrevRef.current = null;
+    };
+
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("mousedown", onMouseDown);
@@ -285,6 +331,9 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchmove", onTouchMove, { passive: true });
     window.addEventListener("touchend", onTouchEnd);
+    window.addEventListener("gesturestart", onGestureStart as EventListener, { passive: false });
+    window.addEventListener("gesturechange", onGestureChange as EventListener, { passive: false });
+    window.addEventListener("gestureend", onGestureEnd as EventListener);
 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
@@ -296,8 +345,11 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("gesturestart", onGestureStart as EventListener);
+      window.removeEventListener("gesturechange", onGestureChange as EventListener);
+      window.removeEventListener("gestureend", onGestureEnd as EventListener);
     };
-  }, [viewMode, inputPreset, setViewMode, applyLookDelta]);
+  }, [viewMode, inputPreset, setViewMode, applyLookDelta, applyForwardZoom]);
 
   useFrame((_state, delta) => {
     if (!isWalkingRef.current) {

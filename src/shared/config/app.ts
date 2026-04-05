@@ -43,6 +43,7 @@ export const APP_CONFIG = {
         wheelDominantAxisRatio: 1.2,
         wheelZoomMultiplier: 0.012,
         pinchZoomMultiplier: 0.02,
+        pinchGestureZoomMultiplier: 5,
       },
       inputPreset: {
         precision: {
