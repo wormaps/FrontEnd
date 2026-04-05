@@ -35,6 +35,7 @@ export const APP_CONFIG = {
       gesture: {
         wheelLookMultiplier: 0.32,
         touchLookMultiplier: 0.9,
+        wheelDominantAxisRatio: 1.2,
       },
       inputPreset: {
         precision: {

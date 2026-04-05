@@ -141,14 +141,26 @@ export default function CameraController({ pkg }: CameraControllerProps) {
 
     const onWheel = (e: WheelEvent) => {
       if (viewMode !== "walk") return;
-      if (!e.ctrlKey && !e.metaKey) {
+
+      const absX = Math.abs(e.deltaX);
+      const absY = Math.abs(e.deltaY);
+      const dominantRatio = CAMERA_CONFIG.gesture.wheelDominantAxisRatio;
+
+      const isHorizontalLook = absX > absY * dominantRatio;
+      const isPinchLikeLook = e.ctrlKey || e.metaKey;
+
+      if (!isHorizontalLook && !isPinchLikeLook) {
         return;
       }
 
       e.preventDefault();
+
+      const deltaX = isHorizontalLook ? e.deltaX : 0;
+      const deltaY = isPinchLikeLook ? e.deltaY : 0;
+
       applyLookDelta(
-        e.deltaX,
-        e.deltaY,
+        deltaX,
+        deltaY,
         CAMERA_CONFIG.gesture.wheelLookMultiplier,
       );
     };
