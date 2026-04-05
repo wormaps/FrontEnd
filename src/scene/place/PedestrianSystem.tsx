@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { usePlaybackStore } from "../../stores/playbackStore";
+import { getPedestrianCountByLevel } from "../../shared/selectors";
 
 const MAX_PEDESTRIANS = 20;
 const AREA = 44;
@@ -18,12 +19,6 @@ type Walker = {
 
 function rand(min: number, max: number) {
   return min + Math.random() * (max - min);
-}
-
-function countByLevel(level: "low" | "medium" | "high") {
-  if (level === "low") return 10;
-  if (level === "high") return 20;
-  return 15;
 }
 
 export default function PedestrianSystem() {
@@ -48,7 +43,7 @@ export default function PedestrianSystem() {
     const mesh = meshRef.current;
     if (!mesh) return;
 
-    const activeCount = countByLevel(level);
+    const activeCount = getPedestrianCountByLevel(level);
     const walkers = walkersRef.current;
 
     for (let i = 0; i < MAX_PEDESTRIANS; i += 1) {

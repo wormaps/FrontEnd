@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { usePlaybackStore } from "../../stores/playbackStore";
 import type { PlacePackage } from "../../data/placePackages";
+import { getVehicleCountByLevel } from "../../shared/selectors";
 
 const MAX_VEHICLES = 8;
 
@@ -17,12 +18,6 @@ type Vehicle = {
 
 function rand(min: number, max: number) {
   return min + Math.random() * (max - min);
-}
-
-function countByLevel(level: "low" | "medium" | "high") {
-  if (level === "low") return 4;
-  if (level === "high") return 8;
-  return 6;
 }
 
 type VehicleSystemProps = {
@@ -50,7 +45,7 @@ export default function VehicleSystem({ pkg }: VehicleSystemProps) {
     const mesh = meshRef.current;
     if (!mesh) return;
 
-    const activeCount = countByLevel(level);
+    const activeCount = getVehicleCountByLevel(level);
     const vehicles = vehiclesRef.current;
 
     for (let i = 0; i < MAX_VEHICLES; i += 1) {
