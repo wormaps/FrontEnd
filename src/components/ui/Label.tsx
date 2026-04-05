@@ -12,14 +12,14 @@ type LabelProps = {
 
 function toToneClass(tone: LabelTone): string {
   if (tone === "muted") {
-    return "text-zinc-500";
+    return "text-muted-soft";
   }
 
   if (tone === "accent") {
-    return "text-cyan-300";
+    return "text-accent-primary";
   }
 
-  return "text-zinc-200";
+  return "text-foreground-strong";
 }
 
 function toSizeClass(size: LabelSize): string {

@@ -10,17 +10,17 @@ type StatusBadgeProps = {
 };
 
 function toDotClass(tone: StatusBadgeTone, pulse: boolean): string {
-  const base = "h-1.5 w-1.5 rounded-full";
+  const base = "status-dot";
 
   if (tone === "active") {
-    return pulse ? `${base} bg-green-500 animate-pulse` : `${base} bg-green-500`;
+    return pulse ? `${base} status-dot-success animate-pulse` : `${base} status-dot-success`;
   }
 
   if (tone === "paused") {
     return `${base} bg-zinc-500`;
   }
 
-  return `${base} bg-cyan-400`;
+  return "status-dot-active";
 }
 
 export function StatusBadge(props: StatusBadgeProps) {
