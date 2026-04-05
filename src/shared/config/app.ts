@@ -60,6 +60,11 @@ export const APP_CONFIG = {
         moveDown: "r",
       },
     },
+    performance: {
+      sampleIntervalMs: 500,
+      warningFps: 45,
+      warningFrameTimeMs: 22,
+    },
   },
   cesium: {
     marker: {

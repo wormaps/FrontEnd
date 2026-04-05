@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import * as THREE from "three";
 import { usePlaybackStore } from "../../stores/playbackStore";
 import type { PlacePackage, BuildingConfig, RoadConfig } from "../../data/placePackages";
@@ -76,15 +77,27 @@ function NeonSigns({ pkg }: { pkg: PlacePackage }) {
 }
 
 export default function StaticEnvironmentFallback({ pkg }: StaticEnvironmentFallbackProps) {
+  const buildingNodes = useMemo(
+    () =>
+      pkg.buildings.map((b) => (
+        <Building key={b.id} config={b} />
+      )),
+    [pkg.buildings],
+  );
+
+  const roadNodes = useMemo(
+    () =>
+      pkg.roads.map((r) => (
+        <Road key={r.id} config={r} />
+      )),
+    [pkg.roads],
+  );
+
   return (
     <group>
       <Ground pkg={pkg} />
-      {pkg.buildings.map((b) => (
-        <Building key={b.id} config={b} />
-      ))}
-      {pkg.roads.map((r) => (
-        <Road key={r.id} config={r} />
-      ))}
+      {buildingNodes}
+      {roadNodes}
       <NeonSigns pkg={pkg} />
     </group>
   );

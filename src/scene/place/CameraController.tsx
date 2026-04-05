@@ -39,6 +39,9 @@ export default function CameraController({ pkg }: CameraControllerProps) {
   const isMouseDraggingRef = useRef(false);
   const yawRef = useRef(0);
   const pitchRef = useRef(0);
+  const moveInputRef = useRef(new THREE.Vector3());
+  const forwardRef = useRef(new THREE.Vector3());
+  const rightRef = useRef(new THREE.Vector3());
 
   const boundsRef = useRef<CameraBounds>({
     min: -CAMERA_CONFIG.boundsFallbackMaxAbs,
@@ -155,7 +158,8 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     const moveDistance = config.moveSpeed * delta;
     const verticalDistance = config.verticalSpeed * delta;
 
-    const moveInput = new THREE.Vector3(
+    const moveInput = moveInputRef.current;
+    moveInput.set(
       Number(keys.has(CAMERA_KEYBIND.moveRight)) - Number(keys.has(CAMERA_KEYBIND.moveLeft)),
       0,
       Number(keys.has(CAMERA_KEYBIND.moveBackward)) - Number(keys.has(CAMERA_KEYBIND.moveForward)),
@@ -164,11 +168,13 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     if (moveInput.lengthSq() > 0) {
       moveInput.normalize().multiplyScalar(moveDistance);
 
-      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      const forward = forwardRef.current;
+      forward.set(0, 0, -1).applyQuaternion(camera.quaternion);
       forward.y = 0;
       forward.normalize();
 
-      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+      const right = rightRef.current;
+      right.set(1, 0, 0).applyQuaternion(camera.quaternion);
       right.y = 0;
       right.normalize();
 
