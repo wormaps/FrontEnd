@@ -1,7 +1,6 @@
 import { 
   Play, 
   Pause, 
-  FastForward, 
   Cloud, 
   CloudRain, 
   Sun, 
@@ -14,6 +13,8 @@ import {
 import { usePlaybackStore } from "../../stores/playbackStore";
 import { usePlaceStore } from "../../stores/placeStore";
 import type { InputPreset } from "../../stores/placeStore";
+import { ControlButton } from "../ui/ControlButton";
+import { Panel } from "../ui/Panel";
 
 const SPEED_OPTIONS = [1, 2, 4];
 const WEATHER_OPTIONS = [
@@ -40,7 +41,7 @@ export default function PlaybackHUD() {
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-4 pb-10">
-      <div className="pointer-events-auto flex items-center gap-4 glass-panel px-6 py-4">
+      <Panel className="pointer-events-auto flex items-center gap-4 px-6 py-4">
         {/* Playback Controls */}
         <div className="flex items-center gap-2">
           <button
@@ -53,15 +54,14 @@ export default function PlaybackHUD() {
 
           <div className="flex items-center gap-1.5 ml-1">
             {SPEED_OPTIONS.map((s) => (
-              <button
+              <ControlButton
                 key={s}
                 onClick={() => setSpeed(s)}
-                className={`glass-button h-8 px-3 text-[11px] font-bold ${
-                  speed === s ? "glass-button-active" : ""
-                }`}
+                size="chip"
+                tone={speed === s ? "active" : "default"}
               >
                 {s}×
-              </button>
+              </ControlButton>
             ))}
           </div>
         </div>
@@ -71,16 +71,15 @@ export default function PlaybackHUD() {
         {/* Weather Controls */}
         <div className="flex items-center gap-1.5">
           {WEATHER_OPTIONS.map(({ value, icon: Icon }) => (
-            <button
+            <ControlButton
               key={value}
               onClick={() => setWeather(value)}
-              className={`glass-button h-9 w-9 ${
-                weather === value ? "glass-button-active" : ""
-              }`}
+              size="icon-md"
+              tone={weather === value ? "active" : "default"}
               title={value}
             >
               <Icon size={16} />
-            </button>
+            </ControlButton>
           ))}
         </div>
 
@@ -96,20 +95,20 @@ export default function PlaybackHUD() {
           </div>
           
           <div className="flex items-center gap-1">
-            <button
+            <ControlButton
               onClick={() => setCurrentTime(currentTime - 1)}
-              className="glass-button h-8 w-8"
+              size="icon-sm"
               title="-1시간"
             >
               <ChevronLeft size={16} />
-            </button>
-            <button
+            </ControlButton>
+            <ControlButton
               onClick={() => setCurrentTime(currentTime + 1)}
-              className="glass-button h-8 w-8"
+              size="icon-sm"
               title="+1시간"
             >
               <ChevronRight size={16} />
-            </button>
+            </ControlButton>
           </div>
         </div>
 
@@ -131,25 +130,25 @@ export default function PlaybackHUD() {
         {/* Sensitivity / Input Presets */}
         <div className="flex items-center gap-1.5">
           {INPUT_PRESET_OPTIONS.map((preset) => (
-            <button
+            <ControlButton
               key={preset}
               onClick={() => setInputPreset(preset)}
-              className={`glass-button h-8 px-2.5 text-[10px] font-bold uppercase tracking-tighter ${
-                inputPreset === preset ? "glass-button-active" : ""
-              }`}
+              className="px-2.5 text-[10px] tracking-tighter"
+              size="chip"
+              tone={inputPreset === preset ? "active" : "default"}
             >
               {preset}
-            </button>
+            </ControlButton>
           ))}
         </div>
-      </div>
+      </Panel>
 
       {viewMode === "walk" && (
-        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 glass-panel px-4 py-2">
+        <Panel className="animate-in fade-in slide-in-from-bottom-2 duration-500 px-4 py-2">
           <p className="text-[11px] font-medium text-zinc-300 tracking-tight">
             <span className="text-cyan-400 font-bold">WASD</span> 이동 · <span className="text-cyan-400 font-bold">E/R</span> 상승/하강 · <span className="text-cyan-400 font-bold">드래그</span> 회전 · <span className="text-cyan-400 font-bold">V</span> 탑뷰 · <span className="text-cyan-400 font-bold">ESC</span> 복귀
           </p>
-        </div>
+        </Panel>
       )}
     </div>
   );
