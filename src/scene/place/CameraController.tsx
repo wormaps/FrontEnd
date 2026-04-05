@@ -6,9 +6,15 @@ import * as THREE from "three";
 import { usePlaceStore } from "../../stores/placeStore";
 import type { InputPreset } from "../../stores/placeStore";
 import type { PlacePackage } from "../../data/placePackages";
+import { APP_CONFIG } from "../../shared/config";
 
 type CameraControllerProps = {
   pkg: PlacePackage;
+};
+
+type CameraBounds = {
+  min: number;
+  max: number;
 };
 
 type PlaceStoreState = {
@@ -17,18 +23,10 @@ type PlaceStoreState = {
   setViewMode: (m: "top" | "walk") => void;
 };
 
-const WALK_HEIGHT = 1.7;
-const TOP_HEIGHT = 80;
-const TOP_X = 0;
-const TOP_Y = 0;
-const TOP_Z = TOP_HEIGHT;
-const MAX_PITCH = Math.PI * 0.46;
-
-const PRESET_CONFIG: Record<InputPreset, { moveSpeed: number; verticalSpeed: number; lookSensitivity: number }> = {
-  precision: { moveSpeed: 3.8, verticalSpeed: 2.4, lookSensitivity: 0.0015 },
-  balanced: { moveSpeed: 5.2, verticalSpeed: 3.2, lookSensitivity: 0.0022 },
-  fast: { moveSpeed: 7.1, verticalSpeed: 4.3, lookSensitivity: 0.003 },
-};
+const CAMERA_CONFIG = APP_CONFIG.scene.camera;
+const PRESET_CONFIG: Record<InputPreset, { moveSpeed: number; verticalSpeed: number; lookSensitivity: number }> =
+  CAMERA_CONFIG.inputPreset;
+const CAMERA_KEYBIND = CAMERA_CONFIG.keybind;
 
 export default function CameraController({ pkg }: CameraControllerProps) {
   const { camera } = useThree();
@@ -42,7 +40,10 @@ export default function CameraController({ pkg }: CameraControllerProps) {
   const yawRef = useRef(0);
   const pitchRef = useRef(0);
 
-  const boundsRef = useRef({ min: -48, max: 48 });
+  const boundsRef = useRef<CameraBounds>({
+    min: -CAMERA_CONFIG.boundsFallbackMaxAbs,
+    max: CAMERA_CONFIG.boundsFallbackMaxAbs,
+  });
 
   const applyLookQuaternion = useCallback(() => {
     const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yawRef.current);
@@ -51,7 +52,8 @@ export default function CameraController({ pkg }: CameraControllerProps) {
   }, [camera]);
 
   const switchToTop = useCallback(() => {
-    camera.position.set(TOP_X, TOP_Y, TOP_Z);
+    const [topX, topY, topZ] = CAMERA_CONFIG.topViewPosition;
+    camera.position.set(topX, topY, topZ);
     camera.lookAt(0, 0, 0);
   }, [camera]);
 
@@ -66,9 +68,12 @@ export default function CameraController({ pkg }: CameraControllerProps) {
   useEffect(() => {
     const maxAbs = Math.max(
       ...pkg.roads.flatMap((r) => [Math.abs(r.start[0]), Math.abs(r.start[1]), Math.abs(r.end[0]), Math.abs(r.end[1])]),
-      48,
+      CAMERA_CONFIG.boundsFallbackMaxAbs,
     );
-    boundsRef.current = { min: -maxAbs - 6, max: maxAbs + 6 };
+    boundsRef.current = {
+      min: -maxAbs - CAMERA_CONFIG.boundsPadding,
+      max: maxAbs + CAMERA_CONFIG.boundsPadding,
+    };
   }, [pkg]);
 
   useEffect(() => {
@@ -86,11 +91,11 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       const key = e.key.toLowerCase();
       keysRef.current.add(key);
 
-      if (key === "v") {
+      if (key === CAMERA_KEYBIND.toggleView) {
         setViewMode(viewMode === "top" ? "walk" : "top");
       }
 
-      if (key === "escape" && viewMode === "walk") {
+      if (key === CAMERA_KEYBIND.exitWalk && viewMode === "walk") {
         setViewMode("top");
       }
     };
@@ -116,7 +121,11 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       const lookSensitivity = PRESET_CONFIG[inputPreset].lookSensitivity;
       yawRef.current -= e.movementX * lookSensitivity;
       pitchRef.current -= e.movementY * lookSensitivity;
-      pitchRef.current = THREE.MathUtils.clamp(pitchRef.current, -MAX_PITCH, MAX_PITCH);
+      pitchRef.current = THREE.MathUtils.clamp(
+        pitchRef.current,
+        -CAMERA_CONFIG.maxPitchRadians,
+        CAMERA_CONFIG.maxPitchRadians,
+      );
 
       applyLookQuaternion();
     };
@@ -147,9 +156,9 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     const verticalDistance = config.verticalSpeed * delta;
 
     const moveInput = new THREE.Vector3(
-      Number(keys.has("d")) - Number(keys.has("a")),
+      Number(keys.has(CAMERA_KEYBIND.moveRight)) - Number(keys.has(CAMERA_KEYBIND.moveLeft)),
       0,
-      Number(keys.has("s")) - Number(keys.has("w")),
+      Number(keys.has(CAMERA_KEYBIND.moveBackward)) - Number(keys.has(CAMERA_KEYBIND.moveForward)),
     );
 
     if (moveInput.lengthSq() > 0) {
@@ -169,18 +178,22 @@ export default function CameraController({ pkg }: CameraControllerProps) {
 
     let nextY = camera.position.y;
 
-    if (keys.has("e")) {
+    if (keys.has(CAMERA_KEYBIND.moveUp)) {
       nextY += verticalDistance;
     }
 
-    if (keys.has("r")) {
+    if (keys.has(CAMERA_KEYBIND.moveDown)) {
       nextY -= verticalDistance;
     }
 
     const { min, max } = boundsRef.current;
     camera.position.set(
       THREE.MathUtils.clamp(camera.position.x, min, max),
-      THREE.MathUtils.clamp(nextY, WALK_HEIGHT - 0.4, WALK_HEIGHT + 3.2),
+      THREE.MathUtils.clamp(
+        nextY,
+        CAMERA_CONFIG.walkHeight + CAMERA_CONFIG.walkVerticalClampOffset.min,
+        CAMERA_CONFIG.walkHeight + CAMERA_CONFIG.walkVerticalClampOffset.max,
+      ),
       THREE.MathUtils.clamp(camera.position.z, min, max),
     );
   });
