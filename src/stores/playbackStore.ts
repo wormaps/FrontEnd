@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { isNightTime, normalizeHour, toTimeOfDay } from "../shared/domains";
 
 export type WeatherMode = "clear" | "cloudy" | "rain" | "snow";
 export type TimeOfDay = "day" | "dusk" | "night";
@@ -29,18 +30,6 @@ type PlaybackStore = {
   isNight: () => boolean;
 };
 
-function normalizeHour(hour: number) {
-  const mod = hour % 24;
-  return mod < 0 ? mod + 24 : mod;
-}
-
-function hourToTimeOfDay(hour: number): TimeOfDay {
-  const h = normalizeHour(hour);
-  if (h >= 6 && h < 17) return "day";
-  if (h >= 17 && h < 20) return "dusk";
-  return "night";
-}
-
 export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   currentTime: 12,
   setCurrentTime: (time) => set({ currentTime: normalizeHour(time) }),
@@ -63,10 +52,10 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
 
   getTimeOfDay: () => {
     const { currentTime } = get();
-    return hourToTimeOfDay(currentTime);
+    return toTimeOfDay(currentTime);
   },
   isNight: () => {
     const { currentTime } = get();
-    return hourToTimeOfDay(currentTime) === "night";
+    return isNightTime(currentTime);
   },
 }));

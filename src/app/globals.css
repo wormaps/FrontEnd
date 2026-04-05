@@ -20,7 +20,32 @@
 }
 
 body {
-  background: var(--background);
+  background: #000;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-2xl border border-white/15 bg-black/45 backdrop-blur-xl;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .glass-button {
+    @apply flex items-center justify-center rounded-xl border border-white/10 bg-white/5 transition-all hover:bg-white/15 active:scale-95 disabled:opacity-50;
+  }
+
+  .glass-button-active {
+    @apply border-cyan-400/50 bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-500/30;
+  }
+}
+
+/* Cesium UI Hiding */
+.cesium-viewer-bottom {
+  display: none !important;
+}
+.cesium-viewer-toolbar {
+  top: 20px !important;
+  right: 20px !important;
 }
