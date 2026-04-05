@@ -123,6 +123,27 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     [camera, viewMode],
   );
 
+  const applyTopZoom = useCallback(
+    (deltaY: number, multiplier = 1) => {
+      if (viewMode !== "top") {
+        return;
+      }
+
+      const [topX, topY] = CAMERA_CONFIG.topViewPosition;
+      const minZ = CAMERA_CONFIG.topViewZoomRange.minZ;
+      const maxZ = CAMERA_CONFIG.topViewZoomRange.maxZ;
+      const nextZ = THREE.MathUtils.clamp(
+        camera.position.z + deltaY * CAMERA_CONFIG.topViewWheelZoomMultiplier * multiplier,
+        minZ,
+        maxZ,
+      );
+
+      camera.position.set(topX, topY, nextZ);
+      camera.lookAt(0, 0, 0);
+    },
+    [camera, viewMode],
+  );
+
   useEffect(() => {
     const maxAbs = Math.max(
       ...pkg.roads.flatMap((r) => [Math.abs(r.start[0]), Math.abs(r.start[1]), Math.abs(r.end[0]), Math.abs(r.end[1])]),
@@ -181,16 +202,7 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     const onWheel = (e: WheelEvent) => {
       if (viewMode === "top") {
         e.preventDefault();
-        const [topX, topY] = CAMERA_CONFIG.topViewPosition;
-        const minZ = CAMERA_CONFIG.topViewZoomRange.minZ;
-        const maxZ = CAMERA_CONFIG.topViewZoomRange.maxZ;
-        const nextZ = THREE.MathUtils.clamp(
-          camera.position.z + e.deltaY * CAMERA_CONFIG.topViewWheelZoomMultiplier,
-          minZ,
-          maxZ,
-        );
-        camera.position.set(topX, topY, nextZ);
-        camera.lookAt(0, 0, 0);
+        applyTopZoom(e.deltaY);
         return;
       }
 
@@ -276,7 +288,7 @@ export default function CameraController({ pkg }: CameraControllerProps) {
 
     const onGestureStart = (event: Event) => {
       const e = event as GestureEventWithScale;
-      if (viewMode !== "walk") {
+      if (viewMode !== "walk" && viewMode !== "top") {
         return;
       }
 
@@ -290,7 +302,7 @@ export default function CameraController({ pkg }: CameraControllerProps) {
 
     const onGestureChange = (event: Event) => {
       const e = event as GestureEventWithScale;
-      if (viewMode !== "walk") {
+      if (viewMode !== "walk" && viewMode !== "top") {
         return;
       }
 
@@ -312,6 +324,15 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       }
 
       event.preventDefault();
+
+      if (viewMode === "top") {
+        applyTopZoom(
+          -deltaScale,
+          CAMERA_CONFIG.gesture.pinchGestureZoomMultiplier,
+        );
+        return;
+      }
+
       applyForwardZoom(
         -deltaScale,
         CAMERA_CONFIG.gesture.pinchGestureZoomMultiplier,
@@ -349,7 +370,7 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       window.removeEventListener("gesturechange", onGestureChange as EventListener);
       window.removeEventListener("gestureend", onGestureEnd as EventListener);
     };
-  }, [viewMode, inputPreset, setViewMode, applyLookDelta, applyForwardZoom]);
+  }, [viewMode, inputPreset, setViewMode, applyLookDelta, applyForwardZoom, applyTopZoom]);
 
   useFrame((_state, delta) => {
     if (!isWalkingRef.current) {
