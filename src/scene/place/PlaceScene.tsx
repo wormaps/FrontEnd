@@ -7,6 +7,8 @@ import { usePlaceStore } from "../../stores/placeStore";
 import PlaceSceneContent from "./PlaceSceneContent";
 import PlaybackHUD from "../../components/hud/PlaybackHUD";
 import SceneInfoHUD from "../../components/hud/SceneInfoHUD";
+import PerformanceHUD from "../../components/hud/PerformanceHUD";
+import PerformanceSystem from "./PerformanceSystem";
 import { usePlaybackStore } from "../../stores/playbackStore";
 
 type PlaceSceneProps = {
@@ -37,9 +39,11 @@ export default function PlaceScene({ slug }: PlaceSceneProps) {
       >
         <Suspense fallback={null}>
           <PlaceSceneContent slug={slug} />
+          <PerformanceSystem />
         </Suspense>
       </Canvas>
       <SceneInfoHUD />
+      <PerformanceHUD />
       <PlaybackHUD />
     </div>
   );
