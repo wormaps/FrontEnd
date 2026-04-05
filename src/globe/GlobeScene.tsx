@@ -70,9 +70,25 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
         navigationHelpButton: false,
         fullscreenButton: false,
         shouldAnimate: true,
+        skyAtmosphere: new Cesium.SkyAtmosphere(),
+        requestRenderMode: true,
       });
 
+      // Google Earth 스타일 대기 및 안개 설정
       viewer.scene.globe.enableLighting = true;
+      viewer.scene.globe.showGroundAtmosphere = true;
+      viewer.scene.fog.enabled = true;
+      viewer.scene.fog.density = 0.0001;
+      viewer.scene.fog.screenSpaceErrorFactor = 2.0;
+      
+      if (viewer.scene.moon) {
+        viewer.scene.moon.show = true;
+      }
+
+      if (viewer.scene.sun) {
+        viewer.scene.sun.show = true;
+      }
+      
       viewerRef.current = viewer;
 
       slugMap.clear();
@@ -92,24 +108,27 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
           name: place.name,
           position: Cesium.Cartesian3.fromDegrees(place.lng, place.lat, 0),
           point: {
-            pixelSize: APP_CONFIG.cesium.marker.pixelSize,
-            color: Cesium.Color.CYAN,
-            outlineColor: Cesium.Color.WHITE,
-            outlineWidth: APP_CONFIG.cesium.marker.outlineWidth,
+            pixelSize: 8,
+            color: Cesium.Color.CYAN.withAlpha(0.8),
+            outlineColor: Cesium.Color.WHITE.withAlpha(0.5),
+            outlineWidth: 2,
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            scaleByDistance: new Cesium.NearFarScalar(1.5e2, 1.5, 8.0e6, 0.5),
           },
           label: {
             text: place.name,
-            font: APP_CONFIG.cesium.marker.labelFont,
+            font: "14px 'Inter', system-ui, sans-serif",
             style: Cesium.LabelStyle.FILL_AND_OUTLINE,
             fillColor: Cesium.Color.WHITE,
-            outlineColor: Cesium.Color.BLACK,
-            outlineWidth: APP_CONFIG.cesium.marker.outlineWidth,
-            pixelOffset: new Cesium.Cartesian2(
-              APP_CONFIG.cesium.marker.labelOffset[0],
-              APP_CONFIG.cesium.marker.labelOffset[1],
-            ),
+            outlineColor: Cesium.Color.BLACK.withAlpha(0.5),
+            outlineWidth: 2,
+            pixelOffset: new Cesium.Cartesian2(0, -28),
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            showBackground: true,
+            backgroundColor: Cesium.Color.BLACK.withAlpha(0.6),
+            backgroundPadding: new Cesium.Cartesian2(8, 4),
+            scaleByDistance: new Cesium.NearFarScalar(1.5e2, 1.0, 1.5e7, 0.5),
+            translucencyByDistance: new Cesium.NearFarScalar(1.5e2, 1.0, 1.5e7, 0.2),
           },
         });
 
@@ -118,7 +137,24 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
         placeNameMap.set(entityId, place.name);
       }
 
-      viewer.camera.flyHome(APP_CONFIG.cesium.marker.flyHomeDuration);
+      // 우주에서 빨려 들어가는 듯한 카메라 연출 (Google Earth Fly-in)
+      viewer.camera.setView({
+        destination: Cesium.Cartesian3.fromDegrees(127.0276, 37.4979, 15000000), // 우주 고도
+        orientation: {
+          heading: 0,
+          pitch: Cesium.Math.toRadians(-90),
+          roll: 0,
+        },
+      });
+
+      // 1초 뒤 강남역 부근으로 빠르게 이동 후 서서히 안정화
+      setTimeout(() => {
+        viewer.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(127.0276, 37.4979, 12000000),
+          duration: 3,
+          easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT,
+        });
+      }, 500);
 
       const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
       clickHandlerRef.current = handler;
