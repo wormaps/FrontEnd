@@ -5,12 +5,22 @@ import { useRouter } from "next/navigation";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { useAppStore } from "../stores/appStore";
 import type { Place } from "../types/place";
-import { APP_CONFIG } from "../shared/config";
 import { createLogger, toErrorContext } from "../shared/logger";
 import { createStaticSceneBootstrap } from "../shared/scene";
 
 type GlobeSceneProps = {
   places: Place[];
+};
+
+type WebKitGestureEvent = Event & {
+  scale?: number;
+};
+
+type GestureHandlers = {
+  onGestureStart: (event: Event) => void;
+  onGestureChange: (event: Event) => void;
+  onGestureEnd: (event: Event) => void;
+  onCtrlWheelPinch: (event: WheelEvent) => void;
 };
 
 const logger = createLogger("globe:scene");
@@ -30,6 +40,7 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
   const clickHandlerRef = useRef<import("cesium").ScreenSpaceEventHandler | null>(
     null,
   );
+  const gestureHandlersRef = useRef<GestureHandlers | null>(null);
   const entityMapRef = useRef<Map<string, string>>(new Map());
   const nameMapRef = useRef<Map<string, string>>(new Map());
 
@@ -74,6 +85,16 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
         requestRenderMode: true,
       });
 
+      const screenSpaceController = viewer.scene.screenSpaceCameraController;
+      screenSpaceController.enableInputs = true;
+      screenSpaceController.enableZoom = true;
+      screenSpaceController.zoomEventTypes = [
+        Cesium.CameraEventType.RIGHT_DRAG,
+        Cesium.CameraEventType.WHEEL,
+        Cesium.CameraEventType.PINCH,
+      ];
+      screenSpaceController.zoomFactor = 5;
+
       // Google Earth 스타일 대기 및 안개 설정
       viewer.scene.globe.enableLighting = true;
       viewer.scene.globe.showGroundAtmosphere = true;
@@ -88,6 +109,88 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
       if (viewer.scene.sun) {
         viewer.scene.sun.show = true;
       }
+
+      let previousGestureScale: number | null = null;
+      const onGestureStart = (event: Event) => {
+        const gestureEvent = event as WebKitGestureEvent;
+
+        if (typeof gestureEvent.scale !== "number") {
+          return;
+        }
+
+        event.preventDefault();
+        previousGestureScale = gestureEvent.scale;
+      };
+
+      const onGestureChange = (event: Event) => {
+        const gestureEvent = event as WebKitGestureEvent;
+
+        if (typeof gestureEvent.scale !== "number") {
+          return;
+        }
+
+        event.preventDefault();
+
+        if (previousGestureScale === null) {
+          previousGestureScale = gestureEvent.scale;
+          return;
+        }
+
+        const scaleDelta = gestureEvent.scale - previousGestureScale;
+        previousGestureScale = gestureEvent.scale;
+
+        if (Math.abs(scaleDelta) < 0.001) {
+          return;
+        }
+
+        const cameraHeight = viewer.camera.positionCartographic.height;
+        const zoomAmount = Math.max(cameraHeight * Math.abs(scaleDelta) * 0.08, 10);
+
+        if (scaleDelta > 0) {
+          viewer.camera.zoomIn(zoomAmount);
+        } else {
+          viewer.camera.zoomOut(zoomAmount);
+        }
+
+        viewer.scene.requestRender();
+      };
+
+      const onGestureEnd = (event: Event) => {
+        event.preventDefault();
+        previousGestureScale = null;
+      };
+
+      const onCtrlWheelPinch = (event: WheelEvent) => {
+        if (!event.ctrlKey) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const cameraHeight = viewer.camera.positionCartographic.height;
+        const zoomAmount = Math.max(cameraHeight * Math.min(Math.abs(event.deltaY), 240) * 0.0015, 10);
+
+        if (event.deltaY < 0) {
+          viewer.camera.zoomIn(zoomAmount);
+        } else {
+          viewer.camera.zoomOut(zoomAmount);
+        }
+
+        viewer.scene.requestRender();
+      };
+
+      viewer.canvas.addEventListener("gesturestart", onGestureStart, { passive: false });
+      viewer.canvas.addEventListener("gesturechange", onGestureChange, { passive: false });
+      viewer.canvas.addEventListener("gestureend", onGestureEnd, { passive: false });
+      viewer.canvas.addEventListener("wheel", onCtrlWheelPinch, { passive: false });
+
+      gestureHandlersRef.current = {
+        onGestureStart,
+        onGestureChange,
+        onGestureEnd,
+        onCtrlWheelPinch,
+      };
       
       viewerRef.current = viewer;
 
@@ -196,9 +299,20 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
       }
 
       if (viewerRef.current) {
+        const gestureHandlers = gestureHandlersRef.current;
+
+        if (gestureHandlers) {
+          viewerRef.current.canvas.removeEventListener("gesturestart", gestureHandlers.onGestureStart);
+          viewerRef.current.canvas.removeEventListener("gesturechange", gestureHandlers.onGestureChange);
+          viewerRef.current.canvas.removeEventListener("gestureend", gestureHandlers.onGestureEnd);
+          viewerRef.current.canvas.removeEventListener("wheel", gestureHandlers.onCtrlWheelPinch);
+        }
+
         viewerRef.current.destroy();
         viewerRef.current = null;
       }
+
+      gestureHandlersRef.current = null;
 
       slugMap.clear();
       placeNameMap.clear();
@@ -207,7 +321,7 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
 
   return (
     <div className="relative flex min-h-screen w-full">
-      <div ref={containerRef} className="h-screen w-full" />
+      <div ref={containerRef} className="h-screen w-full touch-none" />
       <div className="pointer-events-none absolute bottom-4 left-4 z-10 rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-xs text-zinc-200 backdrop-blur-sm">
         <p>Markers: {markerSummary}</p>
         <p className="mt-1 text-cyan-300">
