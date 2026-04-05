@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import { MapPin, Wind, Thermometer, Info } from "lucide-react";
 import { usePlaceStore } from "../../stores/placeStore";
 import { usePlaybackStore } from "../../stores/playbackStore";
+import { normalizeHour } from "../../shared/domains";
 
 function formatTime(hour: number) {
-  const normalized = ((hour % 24) + 24) % 24;
+  const normalized = normalizeHour(hour);
   const h = Math.floor(normalized);
   const m = Math.floor((normalized - h) * 60);
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;

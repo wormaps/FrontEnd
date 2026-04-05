@@ -1,11 +1,10 @@
 import { useEffect } from "react";
 import {
-  fetchLivePlaces,
-  fetchLiveTraffic,
-  fetchLiveWeather,
+  fetchSceneLiveSnapshotBundle,
 } from "../../shared/api";
 import { createLogger, toErrorContext } from "../../shared/logger";
 import type { SceneBootstrap } from "../../shared/contracts";
+import { applyLiveStateBridge } from "./liveStateBridge";
 
 const logger = createLogger("scene:use-live-data");
 
@@ -41,32 +40,33 @@ export function useSceneLiveData(input: UseSceneLiveDataInput) {
 
     let mounted = true;
 
-    void Promise.all([
-      fetchLiveTraffic(bootstrap.liveEndpoints.traffic, normalizedHour),
-      fetchLiveWeather(bootstrap.liveEndpoints.weather, normalizedHour),
-      fetchLivePlaces(bootstrap.liveEndpoints.places, currentPedestrianLevel),
-    ])
-      .then(([trafficSnapshot, weatherSnapshot, placeSnapshot]) => {
+    void fetchSceneLiveSnapshotBundle({
+      bootstrap,
+      hour: normalizedHour,
+      density: currentPedestrianLevel,
+    })
+      .then(({ traffic, weather, place }) => {
         if (!mounted) {
           return;
         }
 
-        if (weatherSnapshot.condition !== currentWeather) {
-          setWeather(weatherSnapshot.condition);
-        }
-        if (placeSnapshot.pedestrianDensity !== currentPedestrianLevel) {
-          setPedestrianLevel(placeSnapshot.pedestrianDensity);
-        }
-        if (placeSnapshot.vehicleDensity !== currentVehicleLevel) {
-          setVehicleLevel(placeSnapshot.vehicleDensity);
-        }
+        applyLiveStateBridge({
+          weatherSnapshot: weather,
+          placeSnapshot: place,
+          currentWeather,
+          currentPedestrianLevel,
+          currentVehicleLevel,
+          setWeather,
+          setPedestrianLevel,
+          setVehicleLevel,
+        });
 
         logger.debug("Updated live scene snapshot", {
           slug,
-          trafficDensity: trafficSnapshot.density,
-          weather: weatherSnapshot.condition,
-          pedestrianDensity: placeSnapshot.pedestrianDensity,
-          vehicleDensity: placeSnapshot.vehicleDensity,
+          trafficDensity: traffic.density,
+          weather: weather.condition,
+          pedestrianDensity: place.pedestrianDensity,
+          vehicleDensity: place.vehicleDensity,
         });
       })
       .catch((error) => {

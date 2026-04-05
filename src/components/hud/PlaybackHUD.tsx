@@ -14,6 +14,7 @@ import {
 import { usePlaybackStore } from "../../stores/playbackStore";
 import { usePlaceStore } from "../../stores/placeStore";
 import type { InputPreset } from "../../stores/placeStore";
+import { normalizeHour } from "../../shared/domains";
 
 const SPEED_OPTIONS = [1, 2, 4];
 const WEATHER_OPTIONS = [
@@ -24,7 +25,7 @@ const WEATHER_OPTIONS = [
 const INPUT_PRESET_OPTIONS: InputPreset[] = ["precision", "balanced", "fast"];
 
 function formatTime(hour: number) {
-  const normalized = ((hour % 24) + 24) % 24;
+  const normalized = normalizeHour(hour);
   const h = Math.floor(normalized);
   const m = Math.floor((normalized - h) * 60);
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
