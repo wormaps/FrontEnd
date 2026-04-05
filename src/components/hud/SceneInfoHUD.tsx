@@ -13,6 +13,22 @@ function formatTime(hour: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+function toWeatherLabel(weather: "clear" | "cloudy" | "rain" | "snow"): string {
+  if (weather === "clear") {
+    return "Clear";
+  }
+
+  if (weather === "cloudy") {
+    return "Cloudy";
+  }
+
+  if (weather === "rain") {
+    return "Rain";
+  }
+
+  return "Snow";
+}
+
 export default function SceneInfoHUD() {
   const currentPlace = usePlaceStore((s) => s.currentPlace);
   const viewMode = usePlaceStore((s) => s.viewMode);
@@ -26,7 +42,7 @@ export default function SceneInfoHUD() {
     return currentPlace.name;
   }, [currentPlace]);
 
-  const statusLabel = isPlaying ? `Active ${speed}x` : "Paused";
+  const statusLabel = isPlaying ? `Running · ${speed}x` : "Paused";
   const statusTone = isPlaying ? "active" : "paused";
 
   return (
@@ -36,7 +52,7 @@ export default function SceneInfoHUD() {
           <div className="surface-accent text-accent-strong flex h-6 w-6 items-center justify-center rounded-lg">
             <MapPin size={14} />
           </div>
-          <p className="text-accent-primary text-[10px] font-bold uppercase tracking-[0.2em] opacity-80">WorMap Simulation</p>
+          <p className="text-accent-primary text-[10px] font-bold uppercase tracking-[0.18em] opacity-80">WorMap Live Scene</p>
         </div>
         
         <h2 className="text-foreground-strong text-xl font-bold tracking-tight">{placeLabel}</h2>
@@ -61,7 +77,7 @@ export default function SceneInfoHUD() {
               </Label>
               <div className="text-foreground-strong flex items-center gap-1.5 text-xs font-bold capitalize">
                 <Wind size={12} className="text-muted-strong" />
-                {weather}
+                {toWeatherLabel(weather)}
               </div>
             </div>
             <div className="flex flex-col gap-1">
@@ -80,7 +96,7 @@ export default function SceneInfoHUD() {
       <Panel className="px-4 py-2 flex items-center gap-2.5 animate-in fade-in slide-in-from-left-4 duration-700 delay-200">
         <Info size={14} className="text-accent-strong" />
         <p className="text-[10px] font-bold uppercase tracking-tight text-zinc-300">
-          Mode: <span className="text-foreground-strong">{viewMode} View</span>
+          Camera: <span className="text-foreground-strong">{viewMode === "walk" ? "Street" : "Overview"}</span>
         </p>
       </Panel>
     </div>

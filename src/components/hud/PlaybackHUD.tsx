@@ -18,9 +18,9 @@ import { Panel } from "../ui/Panel";
 
 const SPEED_OPTIONS = [1, 2, 4];
 const WEATHER_OPTIONS = [
-  { value: "clear", icon: Sun },
-  { value: "cloudy", icon: Cloud },
-  { value: "rain", icon: CloudRain },
+  { value: "clear", icon: Sun, label: "Clear" },
+  { value: "cloudy", icon: Cloud, label: "Cloudy" },
+  { value: "rain", icon: CloudRain, label: "Rain" },
 ] as const;
 const INPUT_PRESET_OPTIONS: InputPreset[] = ["precision", "balanced", "fast"];
 
@@ -70,13 +70,13 @@ export default function PlaybackHUD() {
 
         {/* Weather Controls */}
         <div className="flex items-center gap-1.5">
-          {WEATHER_OPTIONS.map(({ value, icon: Icon }) => (
+          {WEATHER_OPTIONS.map(({ value, icon: Icon, label }) => (
             <ControlButton
               key={value}
               onClick={() => setWeather(value)}
               size="icon-md"
               tone={weather === value ? "active" : "default"}
-              title={value}
+              title={label}
             >
               <Icon size={16} />
             </ControlButton>
@@ -122,7 +122,7 @@ export default function PlaybackHUD() {
           }`}
         >
           {viewMode === "top" ? <Navigation size={14} /> : <Move size={14} />}
-          {viewMode === "top" ? "TOP VIEW" : "WALK VIEW"}
+          {viewMode === "top" ? "Overview" : "Street"}
         </button>
 
         <div className="divider-vertical" />
@@ -146,7 +146,7 @@ export default function PlaybackHUD() {
       {viewMode === "walk" && (
         <Panel className="animate-in fade-in slide-in-from-bottom-2 duration-500 px-4 py-2">
           <p className="text-[11px] font-medium tracking-tight text-zinc-300">
-            <span className="text-accent-strong font-bold">WASD</span> 이동 · <span className="text-accent-strong font-bold">E/R</span> 상승/하강 · <span className="text-accent-strong font-bold">드래그</span> 회전 · <span className="text-accent-strong font-bold">V</span> 탑뷰 · <span className="text-accent-strong font-bold">ESC</span> 복귀
+            <span className="text-accent-strong font-bold">WASD</span> move · <span className="text-accent-strong font-bold">E / R</span> up/down · <span className="text-accent-strong font-bold">Drag</span> look · <span className="text-accent-strong font-bold">⌘/Ctrl + Trackpad</span> look · <span className="text-accent-strong font-bold">V</span> toggle view · <span className="text-accent-strong font-bold">ESC</span> back
           </p>
         </Panel>
       )}
