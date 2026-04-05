@@ -146,7 +146,7 @@ export default function PlaybackHUD() {
       {viewMode === "walk" && (
         <Panel className="animate-in fade-in slide-in-from-bottom-2 duration-500 px-4 py-2">
           <p className="text-[11px] font-medium tracking-tight text-zinc-300">
-            <span className="text-accent-strong font-bold">WASD</span> move · <span className="text-accent-strong font-bold">E / R</span> up/down · <span className="text-accent-strong font-bold">Drag</span> look · <span className="text-accent-strong font-bold">Trackpad ↔</span> look · <span className="text-accent-strong font-bold">⌘/Ctrl + Pinch</span> tilt · <span className="text-accent-strong font-bold">V</span> toggle view · <span className="text-accent-strong font-bold">ESC</span> back
+            <span className="text-accent-strong font-bold">WASD</span> move · <span className="text-accent-strong font-bold">Trackpad ↑↓</span> zoom · <span className="text-accent-strong font-bold">Trackpad ↔</span> look · <span className="text-accent-strong font-bold">Drag</span> look · <span className="text-accent-strong font-bold">⌘/Ctrl + Pinch</span> tilt · <span className="text-accent-strong font-bold">V</span> toggle view · <span className="text-accent-strong font-bold">ESC</span> back
           </p>
         </Panel>
       )}

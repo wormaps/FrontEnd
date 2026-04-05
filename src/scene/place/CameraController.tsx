@@ -43,6 +43,7 @@ export default function CameraController({ pkg }: CameraControllerProps) {
   const moveInputRef = useRef(new THREE.Vector3());
   const forwardRef = useRef(new THREE.Vector3());
   const rightRef = useRef(new THREE.Vector3());
+  const zoomForwardRef = useRef(new THREE.Vector3());
 
   const boundsRef = useRef<CameraBounds>({
     min: -CAMERA_CONFIG.boundsFallbackMaxAbs,
@@ -148,12 +149,39 @@ export default function CameraController({ pkg }: CameraControllerProps) {
 
       const isHorizontalLook = absX > absY * dominantRatio;
       const isPinchLikeLook = e.ctrlKey || e.metaKey;
+      const isVerticalZoom = absY > absX * dominantRatio && !isPinchLikeLook;
 
-      if (!isHorizontalLook && !isPinchLikeLook) {
+      if (!isHorizontalLook && !isPinchLikeLook && !isVerticalZoom) {
         return;
       }
 
       e.preventDefault();
+
+      if (isVerticalZoom) {
+        const zoomForward = zoomForwardRef.current;
+        zoomForward.set(0, 0, -1).applyQuaternion(camera.quaternion);
+        zoomForward.y = 0;
+
+        if (zoomForward.lengthSq() > 0) {
+          zoomForward.normalize();
+          const zoomDistance = e.deltaY * CAMERA_CONFIG.gesture.wheelZoomMultiplier;
+          const { min, max } = boundsRef.current;
+          const nextX = THREE.MathUtils.clamp(
+            camera.position.x + zoomForward.x * zoomDistance,
+            min,
+            max,
+          );
+          const nextZ = THREE.MathUtils.clamp(
+            camera.position.z + zoomForward.z * zoomDistance,
+            min,
+            max,
+          );
+
+          camera.position.set(nextX, camera.position.y, nextZ);
+        }
+
+        return;
+      }
 
       const deltaX = isHorizontalLook ? e.deltaX : 0;
       const deltaY = isPinchLikeLook ? e.deltaY : 0;

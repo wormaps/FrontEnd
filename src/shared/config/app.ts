@@ -36,6 +36,7 @@ export const APP_CONFIG = {
         wheelLookMultiplier: 0.32,
         touchLookMultiplier: 0.9,
         wheelDominantAxisRatio: 1.2,
+        wheelZoomMultiplier: 0.012,
       },
       inputPreset: {
         precision: {
