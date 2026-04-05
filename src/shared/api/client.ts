@@ -1,6 +1,7 @@
 import type { PlacePackage } from "../../data/placePackages";
 import type {
   GeometryLiveMapping,
+  LiveStateLevel,
   LivePlaceSnapshot,
   LiveTrafficSnapshot,
   LiveWeatherSnapshot,
@@ -105,5 +106,35 @@ export async function fetchSceneBootstrapBundle(slug: string) {
     bootstrap,
     mapping,
     pkg,
+  };
+}
+
+type FetchSceneLiveSnapshotBundleInput = {
+  bootstrap: SceneBootstrap;
+  hour: number;
+  density: LiveStateLevel;
+};
+
+type SceneLiveSnapshotBundle = {
+  traffic: LiveTrafficSnapshot;
+  weather: LiveWeatherSnapshot;
+  place: LivePlaceSnapshot;
+};
+
+export async function fetchSceneLiveSnapshotBundle(
+  input: FetchSceneLiveSnapshotBundleInput,
+): Promise<SceneLiveSnapshotBundle> {
+  const { bootstrap, hour, density } = input;
+
+  const [traffic, weather, place] = await Promise.all([
+    fetchLiveTraffic(bootstrap.liveEndpoints.traffic, hour),
+    fetchLiveWeather(bootstrap.liveEndpoints.weather, hour),
+    fetchLivePlaces(bootstrap.liveEndpoints.places, density),
+  ]);
+
+  return {
+    traffic,
+    weather,
+    place,
   };
 }

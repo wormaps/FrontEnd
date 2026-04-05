@@ -6,6 +6,7 @@ import { useAppStore } from "../../stores/appStore";
 import type { PlacePackage } from "../../data/placePackages";
 import { usePlaybackStore } from "../../stores/playbackStore";
 import { APP_CONFIG } from "../../shared/config";
+import { normalizeHour } from "../../shared/domains";
 import { createLogger, toErrorContext } from "../../shared/logger";
 import {
   fetchSceneBootstrapBundle,
@@ -53,8 +54,7 @@ export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
   const sceneMapping = sceneMappingBySlug[slug] ?? null;
 
   const normalizedHour = useMemo(() => {
-    const raw = Math.floor(currentTime);
-    return ((raw % 24) + 24) % 24;
+    return normalizeHour(Math.floor(currentTime));
   }, [currentTime]);
 
   useEffect(() => {
