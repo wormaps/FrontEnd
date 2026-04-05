@@ -32,6 +32,10 @@ export const APP_CONFIG = {
         min: -0.4,
         max: 3.2,
       },
+      gesture: {
+        wheelLookMultiplier: 0.32,
+        touchLookMultiplier: 0.9,
+      },
       inputPreset: {
         precision: {
           moveSpeed: 3.8,

@@ -39,6 +39,7 @@ export default function CameraController({ pkg }: CameraControllerProps) {
   const isMouseDraggingRef = useRef(false);
   const yawRef = useRef(0);
   const pitchRef = useRef(0);
+  const touchPrevRef = useRef<{ x: number; y: number } | null>(null);
   const moveInputRef = useRef(new THREE.Vector3());
   const forwardRef = useRef(new THREE.Vector3());
   const rightRef = useRef(new THREE.Vector3());
@@ -53,6 +54,21 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitchRef.current);
     camera.quaternion.copy(qYaw).multiply(qPitch);
   }, [camera]);
+
+  const applyLookDelta = useCallback(
+    (deltaX: number, deltaY: number, multiplier = 1) => {
+      const lookSensitivity = PRESET_CONFIG[inputPreset].lookSensitivity * multiplier;
+      yawRef.current -= deltaX * lookSensitivity;
+      pitchRef.current -= deltaY * lookSensitivity;
+      pitchRef.current = THREE.MathUtils.clamp(
+        pitchRef.current,
+        -CAMERA_CONFIG.maxPitchRadians,
+        CAMERA_CONFIG.maxPitchRadians,
+      );
+      applyLookQuaternion();
+    },
+    [applyLookQuaternion, inputPreset],
+  );
 
   const switchToTop = useCallback(() => {
     const [topX, topY, topZ] = CAMERA_CONFIG.topViewPosition;
@@ -120,17 +136,63 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     const onMouseMove = (e: MouseEvent) => {
       if (viewMode !== "walk") return;
       if (!isMouseDraggingRef.current) return;
+      applyLookDelta(e.movementX, e.movementY);
+    };
 
-      const lookSensitivity = PRESET_CONFIG[inputPreset].lookSensitivity;
-      yawRef.current -= e.movementX * lookSensitivity;
-      pitchRef.current -= e.movementY * lookSensitivity;
-      pitchRef.current = THREE.MathUtils.clamp(
-        pitchRef.current,
-        -CAMERA_CONFIG.maxPitchRadians,
-        CAMERA_CONFIG.maxPitchRadians,
+    const onWheel = (e: WheelEvent) => {
+      if (viewMode !== "walk") return;
+      if (!e.ctrlKey && !e.metaKey) {
+        return;
+      }
+
+      e.preventDefault();
+      applyLookDelta(
+        e.deltaX,
+        e.deltaY,
+        CAMERA_CONFIG.gesture.wheelLookMultiplier,
       );
+    };
 
-      applyLookQuaternion();
+    const onTouchStart = (e: TouchEvent) => {
+      if (viewMode !== "walk") return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      touchPrevRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+      };
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (viewMode !== "walk") return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const previous = touchPrevRef.current;
+      if (!previous) {
+        touchPrevRef.current = {
+          x: touch.clientX,
+          y: touch.clientY,
+        };
+        return;
+      }
+
+      const deltaX = touch.clientX - previous.x;
+      const deltaY = touch.clientY - previous.y;
+
+      touchPrevRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+      };
+
+      applyLookDelta(
+        deltaX,
+        deltaY,
+        CAMERA_CONFIG.gesture.touchLookMultiplier,
+      );
+    };
+
+    const onTouchEnd = () => {
+      touchPrevRef.current = null;
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -138,6 +200,10 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     window.addEventListener("mousedown", onMouseDown);
     window.addEventListener("mouseup", onMouseUp);
     window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchend", onTouchEnd);
 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
@@ -145,8 +211,12 @@ export default function CameraController({ pkg }: CameraControllerProps) {
       window.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
     };
-  }, [viewMode, inputPreset, setViewMode, applyLookQuaternion]);
+  }, [viewMode, inputPreset, setViewMode, applyLookDelta]);
 
   useFrame((_state, delta) => {
     if (!isWalkingRef.current) {
