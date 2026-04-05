@@ -3,6 +3,7 @@ import { createStaticSceneBootstrap } from "../../../../../shared/scene";
 import { MVP_PLACES } from "../../../../../data/places";
 import { toLiveStateCacheKey } from "../../../../../shared/cache";
 import { validateLivePlaceSnapshot } from "../../../../../shared/contracts";
+import { normalizeLiveLevel } from "../../../../../shared/selectors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,8 +27,7 @@ export async function GET(
   }
 
   const bootstrap = createStaticSceneBootstrap(place);
-  const raw = request.nextUrl.searchParams.get("density") ?? "medium";
-  const density = raw === "low" || raw === "high" ? raw : "medium";
+  const density = normalizeLiveLevel(request.nextUrl.searchParams.get("density"));
 
   const snapshot = validateLivePlaceSnapshot({
     geometryId: bootstrap.geometryId,

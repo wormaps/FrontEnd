@@ -1,11 +1,26 @@
-"use client";
-
+import { 
+  Play, 
+  Pause, 
+  FastForward, 
+  Cloud, 
+  CloudRain, 
+  Sun, 
+  Clock, 
+  Navigation, 
+  Move,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react";
 import { usePlaybackStore } from "../../stores/playbackStore";
 import { usePlaceStore } from "../../stores/placeStore";
 import type { InputPreset } from "../../stores/placeStore";
 
 const SPEED_OPTIONS = [1, 2, 4];
-const WEATHER_OPTIONS = ["clear", "cloudy", "rain"] as const;
+const WEATHER_OPTIONS = [
+  { value: "clear", icon: Sun },
+  { value: "cloudy", icon: Cloud },
+  { value: "rain", icon: CloudRain },
+] as const;
 const INPUT_PRESET_OPTIONS: InputPreset[] = ["precision", "balanced", "fast"];
 
 function formatTime(hour: number) {
@@ -24,87 +39,103 @@ export default function PlaybackHUD() {
   const setInputPreset = usePlaceStore((s) => s.setInputPreset);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3 pb-8">
-      <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/10 bg-black/60 px-5 py-3 text-white backdrop-blur-md">
-        <button
-          onClick={() => setIsPlaying(!isPlaying)}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-sm font-bold transition hover:bg-white/20"
-        >
-          {isPlaying ? "⏸" : "▶"}
-        </button>
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-4 pb-10">
+      <div className="pointer-events-auto flex items-center gap-4 glass-panel px-6 py-4">
+        {/* Playback Controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsPlaying(!isPlaying)}
+            className={`glass-button h-11 w-11 ${isPlaying ? "bg-white/20" : "bg-cyan-500/20 text-cyan-300"}`}
+            title={isPlaying ? "일시정지" : "재생"}
+          >
+            {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} className="ml-0.5" fill="currentColor" />}
+          </button>
 
-        <div className="flex items-center gap-1">
-          {SPEED_OPTIONS.map((s) => (
+          <div className="flex items-center gap-1.5 ml-1">
+            {SPEED_OPTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => setSpeed(s)}
+                className={`glass-button h-8 px-3 text-[11px] font-bold ${
+                  speed === s ? "glass-button-active" : ""
+                }`}
+              >
+                {s}×
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="h-6 w-px bg-white/10" />
+
+        {/* Weather Controls */}
+        <div className="flex items-center gap-1.5">
+          {WEATHER_OPTIONS.map(({ value, icon: Icon }) => (
             <button
-              key={s}
-              onClick={() => setSpeed(s)}
-              className={`rounded px-2.5 py-1 text-xs font-medium transition ${
-                speed === s ? "bg-cyan-500 text-black" : "bg-white/10 hover:bg-white/20"
+              key={value}
+              onClick={() => setWeather(value)}
+              className={`glass-button h-9 w-9 ${
+                weather === value ? "glass-button-active" : ""
               }`}
+              title={value}
             >
-              {s}×
+              <Icon size={16} />
             </button>
           ))}
         </div>
 
-        <div className="h-5 w-px bg-white/20" />
+        <div className="h-6 w-px bg-white/10" />
 
-        <div className="flex items-center gap-1">
-          {WEATHER_OPTIONS.map((w) => (
+        {/* Time Controls */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5">
+            <Clock size={14} className="text-zinc-400" />
+            <span className="text-sm font-bold text-cyan-300 tabular-nums tracking-wider">
+              {formatTime(currentTime)}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-1">
             <button
-              key={w}
-              onClick={() => setWeather(w)}
-              className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition ${
-                weather === w ? "bg-cyan-500 text-black" : "bg-white/10 hover:bg-white/20"
-              }`}
+              onClick={() => setCurrentTime(currentTime - 1)}
+              className="glass-button h-8 w-8"
+              title="-1시간"
             >
-              {w}
+              <ChevronLeft size={16} />
             </button>
-          ))}
+            <button
+              onClick={() => setCurrentTime(currentTime + 1)}
+              className="glass-button h-8 w-8"
+              title="+1시간"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
 
-        <div className="h-5 w-px bg-white/20" />
+        <div className="h-6 w-px bg-white/10" />
 
-        <div className="flex items-center gap-2 rounded bg-white/10 px-2 py-1 text-xs">
-          <span className="text-zinc-300">Time</span>
-          <span className="font-semibold text-cyan-300 tabular-nums">{formatTime(currentTime)}</span>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setCurrentTime(currentTime - 1)}
-            className="rounded px-2 py-1 text-xs font-medium bg-white/10 hover:bg-white/20 transition"
-          >
-            -1h
-          </button>
-          <button
-            onClick={() => setCurrentTime(currentTime + 1)}
-            className="rounded px-2 py-1 text-xs font-medium bg-white/10 hover:bg-white/20 transition"
-          >
-            +1h
-          </button>
-        </div>
-
-        <div className="h-5 w-px bg-white/20" />
-
+        {/* View Mode Toggle */}
         <button
           onClick={() => setViewMode(viewMode === "top" ? "walk" : "top")}
-          className={`rounded px-3 py-1 text-xs font-medium capitalize transition ${
-            viewMode === "top" ? "bg-white/10 hover:bg-white/20" : "bg-cyan-500 text-black"
+          className={`glass-button h-10 px-4 gap-2 text-xs font-bold ${
+            viewMode === "walk" ? "glass-button-active" : ""
           }`}
         >
-          {viewMode === "top" ? "탑뷰" : "워크뷰"}
+          {viewMode === "top" ? <Navigation size={14} /> : <Move size={14} />}
+          {viewMode === "top" ? "TOP VIEW" : "WALK VIEW"}
         </button>
 
-        <div className="h-5 w-px bg-white/20" />
+        <div className="h-6 w-px bg-white/10" />
 
-        <div className="flex items-center gap-1">
+        {/* Sensitivity / Input Presets */}
+        <div className="flex items-center gap-1.5">
           {INPUT_PRESET_OPTIONS.map((preset) => (
             <button
               key={preset}
               onClick={() => setInputPreset(preset)}
-              className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition ${
-                inputPreset === preset ? "bg-cyan-500 text-black" : "bg-white/10 hover:bg-white/20"
+              className={`glass-button h-8 px-2.5 text-[10px] font-bold uppercase tracking-tighter ${
+                inputPreset === preset ? "glass-button-active" : ""
               }`}
             >
               {preset}
@@ -114,9 +145,11 @@ export default function PlaybackHUD() {
       </div>
 
       {viewMode === "walk" && (
-        <p className="rounded-lg bg-black/50 px-3 py-1.5 text-xs text-zinc-300 backdrop-blur-sm">
-          WASD 이동 · E 상승 / R 하강 · 마우스 좌클릭 드래그로 시야 회전 · V 탑뷰 전환 · ESC 복귀 · precision/balanced/fast 감도
-        </p>
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 glass-panel px-4 py-2">
+          <p className="text-[11px] font-medium text-zinc-300 tracking-tight">
+            <span className="text-cyan-400 font-bold">WASD</span> 이동 · <span className="text-cyan-400 font-bold">E/R</span> 상승/하강 · <span className="text-cyan-400 font-bold">드래그</span> 회전 · <span className="text-cyan-400 font-bold">V</span> 탑뷰 · <span className="text-cyan-400 font-bold">ESC</span> 복귀
+          </p>
+        </div>
       )}
     </div>
   );
