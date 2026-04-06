@@ -1,4 +1,4 @@
-import PlaceScene from "../../../scene/place/PlaceScene";
+import PlaceScene from "@/src/scene/place/PlaceScene";
 
 type PlacePageProps = {
   params: Promise<{ slug: string }>;

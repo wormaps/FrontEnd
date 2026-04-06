@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   fetchLivePlaces,
   fetchLiveTraffic,
@@ -8,6 +8,7 @@ import { createLogger, toErrorContext } from "../../shared/logger";
 import type { SceneBootstrap } from "../../shared/contracts";
 
 const logger = createLogger("scene:use-live-data");
+const LIVE_FETCH_MIN_INTERVAL_MS = 1200;
 
 type UseSceneLiveDataInput = {
   slug: string;
@@ -34,10 +35,42 @@ export function useSceneLiveData(input: UseSceneLiveDataInput) {
     setVehicleLevel,
   } = input;
 
+  const latestWeatherRef = useRef(currentWeather);
+  const latestPedestrianLevelRef = useRef(currentPedestrianLevel);
+  const latestVehicleLevelRef = useRef(currentVehicleLevel);
+  const lastFetchRef = useRef<{ key: string; requestedAt: number } | null>(null);
+
+  latestWeatherRef.current = currentWeather;
+  latestPedestrianLevelRef.current = currentPedestrianLevel;
+  latestVehicleLevelRef.current = currentVehicleLevel;
+
   useEffect(() => {
     if (!bootstrap) {
       return;
     }
+
+    const requestKey = [
+      bootstrap.geometryId,
+      normalizedHour,
+      currentWeather,
+      currentPedestrianLevel,
+      currentVehicleLevel,
+    ].join("|");
+    const now = Date.now();
+    const lastFetch = lastFetchRef.current;
+
+    if (
+      lastFetch &&
+      lastFetch.key === requestKey &&
+      now - lastFetch.requestedAt < LIVE_FETCH_MIN_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    lastFetchRef.current = {
+      key: requestKey,
+      requestedAt: now,
+    };
 
     let mounted = true;
 
@@ -51,13 +84,13 @@ export function useSceneLiveData(input: UseSceneLiveDataInput) {
           return;
         }
 
-        if (weatherSnapshot.condition !== currentWeather) {
+        if (weatherSnapshot.condition !== latestWeatherRef.current) {
           setWeather(weatherSnapshot.condition);
         }
-        if (placeSnapshot.pedestrianDensity !== currentPedestrianLevel) {
+        if (placeSnapshot.pedestrianDensity !== latestPedestrianLevelRef.current) {
           setPedestrianLevel(placeSnapshot.pedestrianDensity);
         }
-        if (placeSnapshot.vehicleDensity !== currentVehicleLevel) {
+        if (placeSnapshot.vehicleDensity !== latestVehicleLevelRef.current) {
           setVehicleLevel(placeSnapshot.vehicleDensity);
         }
 
@@ -85,9 +118,9 @@ export function useSceneLiveData(input: UseSceneLiveDataInput) {
     };
   }, [
     bootstrap,
+    currentWeather,
     currentPedestrianLevel,
     currentVehicleLevel,
-    currentWeather,
     normalizedHour,
     setPedestrianLevel,
     setVehicleLevel,

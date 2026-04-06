@@ -27,11 +27,10 @@ export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
   const setPedestrianLevel = usePlaybackStore((s) => s.setPedestrianLevel);
   const setVehicleLevel = usePlaybackStore((s) => s.setVehicleLevel);
   const currentTime = usePlaybackStore((s) => s.currentTime);
-  const currentWeather = usePlaybackStore((s) => s.weather);
+  const weather = usePlaybackStore((s) => s.weather);
   const currentPedestrianLevel = usePlaybackStore((s) => s.pedestrianLevel);
   const currentVehicleLevel = usePlaybackStore((s) => s.vehicleLevel);
   const isNight = usePlaybackStore((s) => s.isNight());
-  const weather = usePlaybackStore((s) => s.weather);
 
   const { scenePkg, sceneBootstrap, sceneMapping } = usePlaceBootstrap({
     slug,
@@ -50,7 +49,7 @@ export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
     slug,
     bootstrap: sceneBootstrap,
     normalizedHour,
-    currentWeather,
+    currentWeather: weather,
     currentPedestrianLevel,
     currentVehicleLevel,
     setWeather,
