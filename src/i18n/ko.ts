@@ -72,5 +72,28 @@ export const ko: Dictionary = {
     online: "온라인",
     travelTo: "{name} (으)로 이동",
     coordinates: "좌표"
+  },
+  scene: {
+    info: {
+      tag: "WorMap 라이브 씬",
+      unknown: "알 수 없는 장소",
+      discoveryMode: "탐색 모드",
+      status: "상태",
+      environment: "환경",
+      localTime: "현지 시간",
+      camera: "카메라",
+      overview: "오버뷰",
+      street: "스트리트"
+    },
+    status: {
+      running: "실행 중",
+      paused: "일시 정지"
+    },
+    weather: {
+      clear: "맑음",
+      cloudy: "흐림",
+      rain: "비",
+      snow: "눈"
+    }
   }
 };

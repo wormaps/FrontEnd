@@ -81,11 +81,41 @@ export const APP_CONFIG = {
   },
   cesium: {
     marker: {
-      pixelSize: 12,
+      pixelSize: 10,
       outlineWidth: 2,
-      labelFont: "14px sans-serif",
-      labelOffset: [0, -24] as const,
-      flyHomeDuration: 0,
+      labelFont: "700 12px 'Inter', system-ui, sans-serif",
+      labelOffset: [0, -22] as const,
+      labelBackgroundColor: "#16181A",
+      labelBackgroundAlpha: 0.85,
+      labelBackgroundPadding: [12, 6] as const,
+      pointColor: "#3b82f6",
+      markerAltitude: 150,
+    },
+    globe: {
+      initialView: {
+        lng: 127.0276,
+        lat: 37.4979,
+        altitude: 15_000_000,
+      },
+      zoom: {
+        factor: 3,
+        inertia: 0.85,
+        min: 1,
+        max: 2.5e7,
+      },
+      fog: {
+        density: 0.0001,
+        screenSpaceErrorFactor: 2.0,
+      },
+      rendering: {
+        maximumScreenSpaceError: 1.0,
+        shadowMapMaxDistance: 5000.0,
+      },
+      scaleByDistance: {
+        point: [1.5e2, 1.5, 8.0e6, 0.4] as const,
+        labelNear: [1.5e2, 1.0, 1.5e7, 0.3] as const,
+        labelFar: [1.5e2, 1.0, 1.5e7, 0.2] as const,
+      },
     },
   },
 } as const;

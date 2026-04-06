@@ -3,14 +3,13 @@
 import { useProgress } from "@react-three/drei";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTranslation } from "../../stores/useI18nStore";
+import { useTranslation } from "@/src/stores/useI18nStore";
 
 export default function LoadingScene() {
   const { progress, active } = useProgress();
-  const { t } = useTranslation();
+  const { t, tArray } = useTranslation();
   
-  // Cast safety because our basic useTranslation custom hook simply passes through array structures if they match
-  const tooltips = t('loading.tooltips') as unknown as string[];
+  const tooltips = tArray('loading.tooltips');
   const [tipIndex, setTipIndex] = useState(0);
 
   useEffect(() => {

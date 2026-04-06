@@ -70,6 +70,29 @@ export const en = {
     online: "Online",
     travelTo: "Travel to {name}",
     coordinates: "Coordinates"
+  },
+  scene: {
+    info: {
+      tag: "WorMap Live Scene",
+      unknown: "Unknown Place",
+      discoveryMode: "Discovery Mode",
+      status: "Status",
+      environment: "Environment",
+      localTime: "Local Time",
+      camera: "Camera",
+      overview: "Overview",
+      street: "Street"
+    },
+    status: {
+      running: "Running",
+      paused: "Paused"
+    },
+    weather: {
+      clear: "Clear",
+      cloudy: "Cloudy",
+      rain: "Rain",
+      snow: "Snow"
+    }
   }
 };
 

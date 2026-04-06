@@ -29,3 +29,10 @@ export function toTimeOfDay(hour: number): TimeOfDay {
 export function isNightTime(hour: number): boolean {
   return toTimeOfDay(hour) === "night";
 }
+
+export function formatTime(hour: number): string {
+  const normalized = normalizeHour(hour);
+  const h = Math.floor(normalized);
+  const m = Math.floor((normalized - h) * 60);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
