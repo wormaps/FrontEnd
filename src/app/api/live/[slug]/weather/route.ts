@@ -3,6 +3,7 @@ import { createStaticSceneBootstrap } from "../../../../../shared/scene";
 import { MVP_PLACES } from "../../../../../data/places";
 import { toLiveStateCacheKey } from "../../../../../shared/cache";
 import { validateLiveWeatherSnapshot } from "../../../../../shared/contracts";
+import { buildWeatherPolicy, normalizeHour } from "../../../../../shared/domains";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,20 +28,14 @@ export async function GET(
 
   const bootstrap = createStaticSceneBootstrap(place);
   const hour = Number(request.nextUrl.searchParams.get("hour") ?? "12");
-  const normalizedHour = Number.isFinite(hour) ? ((hour % 24) + 24) % 24 : 12;
-
-  const condition =
-    normalizedHour >= 6 && normalizedHour < 17
-      ? "clear"
-      : normalizedHour >= 17 && normalizedHour < 21
-        ? "cloudy"
-        : "rain";
+  const normalizedHour = normalizeHour(hour);
+  const weatherPolicy = buildWeatherPolicy(normalizedHour);
 
   const snapshot = validateLiveWeatherSnapshot({
     geometryId: bootstrap.geometryId,
     key: toLiveStateCacheKey(bootstrap.geometryId, "weather"),
-    condition,
-    temperatureCelsius: condition === "rain" ? 10 : 18,
+    condition: weatherPolicy.condition,
+    temperatureCelsius: weatherPolicy.temperatureCelsius,
     capturedAtIso: new Date().toISOString(),
   });
 

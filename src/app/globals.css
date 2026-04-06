@@ -20,7 +20,108 @@
 }
 
 body {
-  background: var(--background);
+  background: #000;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-2xl border border-white/15 bg-black/45 backdrop-blur-xl;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .text-accent-primary {
+    @apply text-cyan-300;
+  }
+
+  .text-accent-strong {
+    @apply text-cyan-400;
+  }
+
+  .text-foreground-strong {
+    @apply text-white;
+  }
+
+  .text-foreground-soft {
+    @apply text-zinc-100;
+  }
+
+  .text-muted-strong {
+    @apply text-zinc-400;
+  }
+
+  .text-muted-soft {
+    @apply text-zinc-500;
+  }
+
+  .surface-muted {
+    @apply bg-white/5;
+  }
+
+  .surface-accent {
+    @apply bg-cyan-500/20;
+  }
+
+  .surface-track {
+    @apply bg-white/5;
+  }
+
+  .surface-progress-accent {
+    @apply bg-cyan-500/50;
+  }
+
+  .surface-loading-base {
+    @apply bg-zinc-950;
+  }
+
+  .surface-loading-track {
+    @apply bg-zinc-800;
+  }
+
+  .surface-loading-progress {
+    @apply bg-cyan-400;
+  }
+
+  .ring-accent-soft {
+    @apply ring-1 ring-cyan-500/30;
+  }
+
+  .divider-soft {
+    @apply h-px bg-white/5;
+  }
+
+  .divider-vertical {
+    @apply h-6 w-px bg-white/10;
+  }
+
+  .status-dot {
+    @apply h-1.5 w-1.5 rounded-full;
+  }
+
+  .status-dot-active {
+    @apply h-1.5 w-1.5 rounded-full bg-cyan-400;
+  }
+
+  .status-dot-success {
+    @apply h-1.5 w-1.5 rounded-full bg-green-500;
+  }
+
+  .glass-button {
+    @apply flex items-center justify-center rounded-xl border border-white/10 bg-white/5 transition-all hover:bg-white/15 active:scale-95 disabled:opacity-50;
+  }
+
+  .glass-button-active {
+    @apply border-cyan-400/50 bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-500/30;
+  }
+}
+
+/* Cesium UI Hiding */
+.cesium-viewer-bottom {
+  display: none !important;
+}
+.cesium-viewer-toolbar {
+  top: 20px !important;
+  right: 20px !important;
 }

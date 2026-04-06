@@ -7,7 +7,11 @@ import { usePlaceStore } from "../../stores/placeStore";
 import PlaceSceneContent from "./PlaceSceneContent";
 import PlaybackHUD from "../../components/hud/PlaybackHUD";
 import SceneInfoHUD from "../../components/hud/SceneInfoHUD";
+import PerformanceHUD from "../../components/hud/PerformanceHUD";
+import PerformanceSystem from "./PerformanceSystem";
 import { usePlaybackStore } from "../../stores/playbackStore";
+import { selectIsNight } from "../../stores/selectors/playbackSelectors";
+import LoadingScene from "../loading/LoadingScene";
 
 type PlaceSceneProps = {
   slug: string;
@@ -15,7 +19,7 @@ type PlaceSceneProps = {
 
 export default function PlaceScene({ slug }: PlaceSceneProps) {
   const setStatus = usePlaceStore((s) => s.setStatus);
-  const isNight = usePlaybackStore((s) => s.isNight());
+  const isNight = usePlaybackStore(selectIsNight);
 
   const backgroundClass = useMemo(() => {
     return isNight ? "bg-[#03040a]" : "bg-[#7fc5ff]";
@@ -37,10 +41,13 @@ export default function PlaceScene({ slug }: PlaceSceneProps) {
       >
         <Suspense fallback={null}>
           <PlaceSceneContent slug={slug} />
+          <PerformanceSystem />
         </Suspense>
       </Canvas>
       <SceneInfoHUD />
+      <PerformanceHUD />
       <PlaybackHUD />
+      <LoadingScene />
     </div>
   );
 }

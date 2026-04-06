@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import { usePlaceStore } from "../../stores/placeStore";
 import { useAppStore } from "../../stores/appStore";
-import type { PlacePackage } from "../../data/placePackages";
 import { usePlaybackStore } from "../../stores/playbackStore";
+import { selectIsNight } from "../../stores/selectors/playbackSelectors";
 import { APP_CONFIG } from "../../shared/config";
-import { createLogger, toErrorContext } from "../../shared/logger";
-import {
-  fetchSceneBootstrapBundle,
-} from "../../shared/api";
-import type { GeometryLiveMapping, SceneBootstrap } from "../../shared/contracts";
+import { normalizeHour } from "../../shared/domains";
 import StaticEnvironment from "./StaticEnvironment";
 import CameraController from "./CameraController";
 import PlaybackSystem from "./PlaybackSystem";
@@ -18,16 +14,11 @@ import RainEffect from "./RainEffect";
 import PedestrianSystem from "./PedestrianSystem";
 import VehicleSystem from "./VehicleSystem";
 import { useSceneLiveData } from "./useSceneLiveData";
+import { usePlaceBootstrap } from "./usePlaceBootstrap";
 
 type PlaceSceneContentProps = {
   slug: string;
 };
-
-const logger = createLogger("scene:place-content");
-
-function toPlaceLabel(slug: string) {
-  return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
   const setStatus = usePlaceStore((s) => s.setStatus);
@@ -38,115 +29,68 @@ export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
   const setPedestrianLevel = usePlaybackStore((s) => s.setPedestrianLevel);
   const setVehicleLevel = usePlaybackStore((s) => s.setVehicleLevel);
   const currentTime = usePlaybackStore((s) => s.currentTime);
-  const currentWeather = usePlaybackStore((s) => s.weather);
+  const weather = usePlaybackStore((s) => s.weather);
   const currentPedestrianLevel = usePlaybackStore((s) => s.pedestrianLevel);
   const currentVehicleLevel = usePlaybackStore((s) => s.vehicleLevel);
-  const isNight = usePlaybackStore((s) => s.isNight());
-  const weather = usePlaybackStore((s) => s.weather);
+  const isNight = usePlaybackStore(selectIsNight);
 
-  const [scenePkgBySlug, setScenePkgBySlug] = useState<Record<string, PlacePackage | null>>({});
-  const [sceneBootstrapBySlug, setSceneBootstrapBySlug] = useState<Record<string, SceneBootstrap | null>>({});
-  const [sceneMappingBySlug, setSceneMappingBySlug] = useState<Record<string, GeometryLiveMapping | null>>({});
-
-  const scenePkg = scenePkgBySlug[slug] ?? null;
-  const sceneBootstrap = sceneBootstrapBySlug[slug] ?? null;
-  const sceneMapping = sceneMappingBySlug[slug] ?? null;
-
-  const normalizedHour = useMemo(() => {
-    const raw = Math.floor(currentTime);
-    return ((raw % 24) + 24) % 24;
-  }, [currentTime]);
+  const { data, isLoading, isError } = usePlaceBootstrap(slug);
 
   useEffect(() => {
-    let mounted = true;
-    let readyTimer: ReturnType<typeof setTimeout> | null = null;
+    if (isLoading) {
+      setStatus("loading");
+      setProgress(APP_CONFIG.place.loading.initialProgress);
+    } else if (isError) {
+      setStatus("error");
+    } else if (data) {
+      setCurrentPlace(data.placeMeta);
+      setMode("place");
 
-    setStatus("loading");
-    setProgress(APP_CONFIG.place.loading.initialProgress);
+      const readyTimer = setTimeout(() => {
+        setProgress(APP_CONFIG.place.loading.completedProgress);
+        setStatus("ready");
+      }, APP_CONFIG.place.loading.readyDelayMs);
 
-    void fetchSceneBootstrapBundle(slug)
-      .then(({ bootstrap, mapping, pkg: fetchedPkg }) => {
-        if (!mounted) {
-          return;
-        }
+      return () => clearTimeout(readyTimer);
+    }
+  }, [data, isLoading, isError, setCurrentPlace, setMode, setProgress, setStatus]);
 
-        setScenePkgBySlug((previous) => ({
-          ...previous,
-          [slug]: fetchedPkg,
-        }));
-        setSceneBootstrapBySlug((previous) => ({
-          ...previous,
-          [slug]: bootstrap,
-        }));
-        setSceneMappingBySlug((previous) => ({
-          ...previous,
-          [slug]: mapping,
-        }));
+  const normalizedHour = normalizeHour(Math.floor(currentTime));
 
-        logger.info("Bootstrapping place scene", {
-          slug,
-          geometryId: bootstrap.geometryId,
-          bindingCount: mapping.bindings.length,
-          assetUrl: bootstrap.assetUrl,
-        });
-
-        setCurrentPlace({
-          id: bootstrap.placeId,
-          slug: bootstrap.slug,
-          name: toPlaceLabel(bootstrap.slug),
-          lat: 0,
-          lng: 0,
-          city: "",
-          country: "",
-        });
-        setMode("place");
-
-        readyTimer = setTimeout(() => {
-          if (!mounted) {
-            return;
-          }
-          setProgress(APP_CONFIG.place.loading.completedProgress);
-          setStatus("ready");
-          logger.info("Place scene ready", {
-            slug,
-          });
-        }, APP_CONFIG.place.loading.readyDelayMs);
-
-      })
-      .catch((error) => {
-        if (!mounted) {
-          return;
-        }
-        setStatus("error");
-        logger.error("Failed to bootstrap place scene", {
-          slug,
-          ...toErrorContext(error),
-        });
-      });
-
-    return () => {
-      mounted = false;
-      if (readyTimer) {
-        clearTimeout(readyTimer);
-      }
-    };
-  }, [setCurrentPlace, setMode, setProgress, setStatus, slug]);
-
-  useSceneLiveData({
+  const { data: liveData } = useSceneLiveData({
     slug,
-    bootstrap: sceneBootstrap,
+    bootstrap: data?.bootstrap ?? null,
     normalizedHour,
-    currentWeather,
+    currentPedestrianLevel,
+  });
+
+  useEffect(() => {
+    if (liveData) {
+      if (liveData.weather.condition !== weather) {
+        setWeather(liveData.weather.condition);
+      }
+      if (liveData.places.pedestrianDensity !== currentPedestrianLevel) {
+        setPedestrianLevel(liveData.places.pedestrianDensity);
+      }
+      if (liveData.places.vehicleDensity !== currentVehicleLevel) {
+        setVehicleLevel(liveData.places.vehicleDensity);
+      }
+    }
+  }, [
+    liveData,
+    weather,
     currentPedestrianLevel,
     currentVehicleLevel,
     setWeather,
     setPedestrianLevel,
     setVehicleLevel,
-  });
+  ]);
 
-  if (!scenePkg) {
+  if (!data) {
     return null;
   }
+
+  const { pkg: scenePkg, bootstrap: sceneBootstrap, mapping: sceneMapping } = data;
 
   const ambientIntensity = isNight
     ? APP_CONFIG.scene.light.night.ambientIntensity

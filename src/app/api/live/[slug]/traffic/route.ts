@@ -3,6 +3,7 @@ import { createStaticSceneBootstrap } from "../../../../../shared/scene";
 import { MVP_PLACES } from "../../../../../data/places";
 import { toLiveStateCacheKey } from "../../../../../shared/cache";
 import { validateLiveTrafficSnapshot } from "../../../../../shared/contracts";
+import { normalizeHour, toTrafficPolicy } from "../../../../../shared/domains";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,14 +28,14 @@ export async function GET(
 
   const bootstrap = createStaticSceneBootstrap(place);
   const hour = Number(request.nextUrl.searchParams.get("hour") ?? "12");
-  const normalizedHour = Number.isFinite(hour) ? ((hour % 24) + 24) % 24 : 12;
-  const rushHour = (normalizedHour >= 8 && normalizedHour <= 10) || (normalizedHour >= 17 && normalizedHour <= 20);
+  const normalizedHour = normalizeHour(hour);
+  const trafficPolicy = toTrafficPolicy(normalizedHour);
 
   const payload = validateLiveTrafficSnapshot({
     geometryId: bootstrap.geometryId,
     key: toLiveStateCacheKey(bootstrap.geometryId, "traffic"),
-    density: rushHour ? "high" : "medium",
-    speedKph: rushHour ? 18 : 32,
+    density: trafficPolicy.density,
+    speedKph: trafficPolicy.speedKph,
     capturedAtIso: new Date().toISOString(),
   });
 

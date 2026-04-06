@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import * as THREE from "three";
 import { usePlaybackStore } from "../../stores/playbackStore";
+import { selectIsNight } from "../../stores/selectors/playbackSelectors";
 import type { PlacePackage, BuildingConfig, RoadConfig } from "../../data/placePackages";
 
 type StaticEnvironmentFallbackProps = {
@@ -18,7 +20,7 @@ function Ground({ pkg }: { pkg: PlacePackage }) {
 }
 
 function Building({ config }: { config: BuildingConfig }) {
-  const isNight = usePlaybackStore((s) => s.isNight());
+  const isNight = usePlaybackStore(selectIsNight);
   const baseColor = config.color;
 
   return (
@@ -53,7 +55,7 @@ function Road({ config }: { config: RoadConfig }) {
 }
 
 function NeonSigns({ pkg }: { pkg: PlacePackage }) {
-  const isNight = usePlaybackStore((s) => s.isNight());
+  const isNight = usePlaybackStore(selectIsNight);
   if (!isNight) return null;
 
   return (
@@ -76,15 +78,27 @@ function NeonSigns({ pkg }: { pkg: PlacePackage }) {
 }
 
 export default function StaticEnvironmentFallback({ pkg }: StaticEnvironmentFallbackProps) {
+  const buildingNodes = useMemo(
+    () =>
+      pkg.buildings.map((b) => (
+        <Building key={b.id} config={b} />
+      )),
+    [pkg.buildings],
+  );
+
+  const roadNodes = useMemo(
+    () =>
+      pkg.roads.map((r) => (
+        <Road key={r.id} config={r} />
+      )),
+    [pkg.roads],
+  );
+
   return (
     <group>
       <Ground pkg={pkg} />
-      {pkg.buildings.map((b) => (
-        <Building key={b.id} config={b} />
-      ))}
-      {pkg.roads.map((r) => (
-        <Road key={r.id} config={r} />
-      ))}
+      {buildingNodes}
+      {roadNodes}
       <NeonSigns pkg={pkg} />
     </group>
   );

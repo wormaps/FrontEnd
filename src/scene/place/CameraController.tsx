@@ -6,6 +6,15 @@ import * as THREE from "three";
 import { usePlaceStore } from "../../stores/placeStore";
 import type { InputPreset } from "../../stores/placeStore";
 import type { PlacePackage } from "../../data/placePackages";
+import { APP_CONFIG } from "../../shared/config";
+import {
+  applyLookQuaternion as applyCameraLookQuaternion,
+  applyWalkMovementFrame,
+  computeCameraBounds,
+  type CameraBounds,
+} from "./cameraMath";
+import { useCameraModeTransitions } from "./useCameraModeTransitions";
+import { useCameraInputHandlers } from "./useCameraInputHandlers";
 
 type CameraControllerProps = {
   pkg: PlacePackage;
@@ -17,18 +26,10 @@ type PlaceStoreState = {
   setViewMode: (m: "top" | "walk") => void;
 };
 
-const WALK_HEIGHT = 1.7;
-const TOP_HEIGHT = 80;
-const TOP_X = 0;
-const TOP_Y = 0;
-const TOP_Z = TOP_HEIGHT;
-const MAX_PITCH = Math.PI * 0.46;
-
-const PRESET_CONFIG: Record<InputPreset, { moveSpeed: number; verticalSpeed: number; lookSensitivity: number }> = {
-  precision: { moveSpeed: 3.8, verticalSpeed: 2.4, lookSensitivity: 0.0015 },
-  balanced: { moveSpeed: 5.2, verticalSpeed: 3.2, lookSensitivity: 0.0022 },
-  fast: { moveSpeed: 7.1, verticalSpeed: 4.3, lookSensitivity: 0.003 },
-};
+const CAMERA_CONFIG = APP_CONFIG.scene.camera;
+const PRESET_CONFIG: Record<InputPreset, { moveSpeed: number; verticalSpeed: number; lookSensitivity: number }> =
+  CAMERA_CONFIG.inputPreset;
+const CAMERA_KEYBIND = CAMERA_CONFIG.keybind;
 
 export default function CameraController({ pkg }: CameraControllerProps) {
   const { camera } = useThree();
@@ -41,17 +42,40 @@ export default function CameraController({ pkg }: CameraControllerProps) {
   const isMouseDraggingRef = useRef(false);
   const yawRef = useRef(0);
   const pitchRef = useRef(0);
+  const touchPrevRef = useRef<{ x: number; y: number } | null>(null);
+  const moveInputRef = useRef(new THREE.Vector3());
+  const forwardRef = useRef(new THREE.Vector3());
+  const rightRef = useRef(new THREE.Vector3());
+  const zoomForwardRef = useRef(new THREE.Vector3());
+  const pinchScalePrevRef = useRef<number | null>(null);
 
-  const boundsRef = useRef({ min: -48, max: 48 });
+  const boundsRef = useRef<CameraBounds>({
+    min: -CAMERA_CONFIG.boundsFallbackMaxAbs,
+    max: CAMERA_CONFIG.boundsFallbackMaxAbs,
+  });
 
   const applyLookQuaternion = useCallback(() => {
-    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yawRef.current);
-    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitchRef.current);
-    camera.quaternion.copy(qYaw).multiply(qPitch);
+    applyCameraLookQuaternion(camera, yawRef.current, pitchRef.current);
   }, [camera]);
 
+  const applyLookDelta = useCallback(
+    (deltaX: number, deltaY: number, multiplier = 1) => {
+      const lookSensitivity = PRESET_CONFIG[inputPreset].lookSensitivity * multiplier;
+      yawRef.current -= deltaX * lookSensitivity;
+      pitchRef.current -= deltaY * lookSensitivity;
+      pitchRef.current = THREE.MathUtils.clamp(
+        pitchRef.current,
+        -CAMERA_CONFIG.maxPitchRadians,
+        CAMERA_CONFIG.maxPitchRadians,
+      );
+      applyLookQuaternion();
+    },
+    [applyLookQuaternion, inputPreset],
+  );
+
   const switchToTop = useCallback(() => {
-    camera.position.set(TOP_X, TOP_Y, TOP_Z);
+    const [topX, topY, topZ] = CAMERA_CONFIG.topViewPosition;
+    camera.position.set(topX, topY, topZ);
     camera.lookAt(0, 0, 0);
   }, [camera]);
 
@@ -64,77 +88,31 @@ export default function CameraController({ pkg }: CameraControllerProps) {
   }, [camera, pkg.walkStartPosition, applyLookQuaternion]);
 
   useEffect(() => {
-    const maxAbs = Math.max(
-      ...pkg.roads.flatMap((r) => [Math.abs(r.start[0]), Math.abs(r.start[1]), Math.abs(r.end[0]), Math.abs(r.end[1])]),
-      48,
-    );
-    boundsRef.current = { min: -maxAbs - 6, max: maxAbs + 6 };
+    boundsRef.current = computeCameraBounds(pkg, CAMERA_CONFIG);
   }, [pkg]);
 
-  useEffect(() => {
-    if (viewMode === "top") {
-      switchToTop();
-      isWalkingRef.current = false;
-    } else {
-      switchToWalk();
-      isWalkingRef.current = true;
-    }
-  }, [viewMode, switchToTop, switchToWalk]);
+  useCameraModeTransitions({
+    viewMode,
+    switchToTop,
+    switchToWalk,
+    isWalkingRef,
+  });
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      keysRef.current.add(key);
-
-      if (key === "v") {
-        setViewMode(viewMode === "top" ? "walk" : "top");
-      }
-
-      if (key === "escape" && viewMode === "walk") {
-        setViewMode("top");
-      }
-    };
-
-    const onKeyUp = (e: KeyboardEvent) => {
-      keysRef.current.delete(e.key.toLowerCase());
-    };
-
-    const onMouseDown = (e: MouseEvent) => {
-      if (viewMode !== "walk") return;
-      if (e.button !== 0) return;
-      isMouseDraggingRef.current = true;
-    };
-
-    const onMouseUp = () => {
-      isMouseDraggingRef.current = false;
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      if (viewMode !== "walk") return;
-      if (!isMouseDraggingRef.current) return;
-
-      const lookSensitivity = PRESET_CONFIG[inputPreset].lookSensitivity;
-      yawRef.current -= e.movementX * lookSensitivity;
-      pitchRef.current -= e.movementY * lookSensitivity;
-      pitchRef.current = THREE.MathUtils.clamp(pitchRef.current, -MAX_PITCH, MAX_PITCH);
-
-      applyLookQuaternion();
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("mouseup", onMouseUp);
-    window.addEventListener("mousemove", onMouseMove);
-
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("mousemove", onMouseMove);
-    };
-  }, [viewMode, inputPreset, setViewMode, applyLookQuaternion]);
+  useCameraInputHandlers({
+    viewMode,
+    inputPreset,
+    setViewMode,
+    camera,
+    cameraConfig: CAMERA_CONFIG,
+    cameraKeybind: CAMERA_KEYBIND,
+    boundsRef,
+    keysRef,
+    isMouseDraggingRef,
+    touchPrevRef,
+    pinchScalePrevRef,
+    zoomForwardRef,
+    applyLookDelta,
+  });
 
   useFrame((_state, delta) => {
     if (!isWalkingRef.current) {
@@ -143,46 +121,19 @@ export default function CameraController({ pkg }: CameraControllerProps) {
 
     const keys = keysRef.current;
     const config = PRESET_CONFIG[inputPreset];
-    const moveDistance = config.moveSpeed * delta;
-    const verticalDistance = config.verticalSpeed * delta;
 
-    const moveInput = new THREE.Vector3(
-      Number(keys.has("d")) - Number(keys.has("a")),
-      0,
-      Number(keys.has("s")) - Number(keys.has("w")),
-    );
-
-    if (moveInput.lengthSq() > 0) {
-      moveInput.normalize().multiplyScalar(moveDistance);
-
-      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-      forward.y = 0;
-      forward.normalize();
-
-      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-      right.y = 0;
-      right.normalize();
-
-      camera.position.addScaledVector(right, moveInput.x);
-      camera.position.addScaledVector(forward, -moveInput.z);
-    }
-
-    let nextY = camera.position.y;
-
-    if (keys.has("e")) {
-      nextY += verticalDistance;
-    }
-
-    if (keys.has("r")) {
-      nextY -= verticalDistance;
-    }
-
-    const { min, max } = boundsRef.current;
-    camera.position.set(
-      THREE.MathUtils.clamp(camera.position.x, min, max),
-      THREE.MathUtils.clamp(nextY, WALK_HEIGHT - 0.4, WALK_HEIGHT + 3.2),
-      THREE.MathUtils.clamp(camera.position.z, min, max),
-    );
+    applyWalkMovementFrame({
+      camera,
+      keys,
+      inputConfig: config,
+      keybind: CAMERA_KEYBIND,
+      cameraConfig: CAMERA_CONFIG,
+      bounds: boundsRef.current,
+      delta,
+      moveInput: moveInputRef.current,
+      forward: forwardRef.current,
+      right: rightRef.current,
+    });
   });
 
   return null;

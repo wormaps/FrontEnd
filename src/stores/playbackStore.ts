@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { normalizeHour } from "../shared/domains";
 
 export type WeatherMode = "clear" | "cloudy" | "rain" | "snow";
 export type TimeOfDay = "day" | "dusk" | "night";
@@ -24,24 +25,9 @@ type PlaybackStore = {
   vehicleLevel: VehicleLevel;
   setPedestrianLevel: (level: PedestrianLevel) => void;
   setVehicleLevel: (level: VehicleLevel) => void;
-
-  getTimeOfDay: () => TimeOfDay;
-  isNight: () => boolean;
 };
 
-function normalizeHour(hour: number) {
-  const mod = hour % 24;
-  return mod < 0 ? mod + 24 : mod;
-}
-
-function hourToTimeOfDay(hour: number): TimeOfDay {
-  const h = normalizeHour(hour);
-  if (h >= 6 && h < 17) return "day";
-  if (h >= 17 && h < 20) return "dusk";
-  return "night";
-}
-
-export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
+export const usePlaybackStore = create<PlaybackStore>((set) => ({
   currentTime: 12,
   setCurrentTime: (time) => set({ currentTime: normalizeHour(time) }),
 
@@ -60,13 +46,4 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   vehicleLevel: "medium",
   setPedestrianLevel: (level) => set({ pedestrianLevel: level }),
   setVehicleLevel: (level) => set({ vehicleLevel: level }),
-
-  getTimeOfDay: () => {
-    const { currentTime } = get();
-    return hourToTimeOfDay(currentTime);
-  },
-  isNight: () => {
-    const { currentTime } = get();
-    return hourToTimeOfDay(currentTime) === "night";
-  },
 }));
