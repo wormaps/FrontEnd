@@ -53,5 +53,24 @@ export const ko: Dictionary = {
     delete: "삭제",
     share: "공유",
     changeLang: "Change to English"
+  },
+  loading: {
+    title: "공간 데이터 동기화 중...",
+    subtitle: "지형 및 메타데이터를 로드하고 있습니다.",
+    tooltips: [
+      "WorMap의 보행자는 날씨와 시간에 영향을 받습니다.",
+      "차량의 트래픽 양은 시뮬레이션 설정에 따라 조절됩니다.",
+      "밤이 되면 도시의 네온사인 기능이 활성화됩니다.",
+      "워크뷰(Walk View) 모드에서 WASD 키로 이동할 수 있습니다."
+    ]
+  },
+  explorer: {
+    engine: "WorMap 엔진",
+    title: "글로벌 탐색",
+    search: "좌표 또는 장소 검색...",
+    systemStatus: "시스템 상태",
+    online: "온라인",
+    travelTo: "{name} (으)로 이동",
+    coordinates: "좌표"
   }
 };

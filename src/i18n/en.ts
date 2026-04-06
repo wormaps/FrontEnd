@@ -51,6 +51,25 @@ export const en = {
     delete: "Delete",
     share: "Share",
     changeLang: "한국어로 변경"
+  },
+  loading: {
+    title: "Synchronizing Spatial Data...",
+    subtitle: "Loading geography and metadata.",
+    tooltips: [
+      "WorMap pedestrians are affected by weather and time.",
+      "Vehicle traffic volume is regulated by simulation settings.",
+      "City neon signs activate automatically at night.",
+      "Use WASD to move around in Walk View mode."
+    ]
+  },
+  explorer: {
+    engine: "WorMap Engine",
+    title: "GLOBAL DISCOVERY",
+    search: "Search coordinates or places...",
+    systemStatus: "System Status",
+    online: "Online",
+    travelTo: "Travel to {name}",
+    coordinates: "Coordinates"
   }
 };
 

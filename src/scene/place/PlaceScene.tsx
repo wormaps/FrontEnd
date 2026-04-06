@@ -10,6 +10,7 @@ import SceneInfoHUD from "../../components/hud/SceneInfoHUD";
 import PerformanceHUD from "../../components/hud/PerformanceHUD";
 import PerformanceSystem from "./PerformanceSystem";
 import { usePlaybackStore } from "../../stores/playbackStore";
+import LoadingScene from "../loading/LoadingScene";
 
 type PlaceSceneProps = {
   slug: string;
@@ -45,6 +46,7 @@ export default function PlaceScene({ slug }: PlaceSceneProps) {
       <SceneInfoHUD />
       <PerformanceHUD />
       <PlaybackHUD />
+      <LoadingScene />
     </div>
   );
 }
