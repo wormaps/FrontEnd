@@ -63,15 +63,9 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
         shouldAnimate: true,
         skyAtmosphere: new Cesium.SkyAtmosphere(),
         requestRenderMode: true,
-        useBrowserRecommendedResolution: false,
-        terrainShadows: Cesium.ShadowMode.ENABLED,
+        useBrowserRecommendedResolution: true, // Retina 디스플레이 자동 최적화
+        terrainShadows: Cesium.ShadowMode.DISABLED, // 극강의 FPS 확보를 위해 터레인 그림자 해제
       });
-
-      // 픽셀 밀도에 맞춰 해상도 강제 1:1 매칭 (retina 지원)
-      viewer.resolutionScale = typeof window !== "undefined"
-        ? Math.min(window.devicePixelRatio, 2)
-        : 1;
-      viewer.scene.shadowMap.maximumDistance = GLOBE.rendering.shadowMapMaxDistance;
 
       // 카메라 입력 설정
       const ssc = viewer.scene.screenSpaceCameraController;
@@ -87,34 +81,37 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
       ssc.minimumZoomDistance = GLOBE.zoom.min;
       ssc.maximumZoomDistance = GLOBE.zoom.max;
 
-      // 렌더링 품질 설정
+      // 렌더링 품질 최적화 설정
       viewer.scene.globe.enableLighting = true;
       viewer.scene.globe.showGroundAtmosphere = true;
       viewer.scene.globe.maximumScreenSpaceError = GLOBE.rendering.maximumScreenSpaceError;
-      viewer.scene.globe.shadows = Cesium.ShadowMode.RECEIVE_ONLY;
+      viewer.scene.globe.shadows = Cesium.ShadowMode.DISABLED; // 전지구적 그림자 처리 해제
+      
       viewer.scene.fog.enabled = true;
       viewer.scene.fog.density = GLOBE.fog.density;
       viewer.scene.fog.screenSpaceErrorFactor = GLOBE.fog.screenSpaceErrorFactor;
-      viewer.scene.highDynamicRange = true;
-      viewer.scene.postProcessStages.fxaa.enabled = true;
+      
+      // 후처리(FXAA, HDR) 기능 해제를 통한 연산량 대폭 절감
+      viewer.scene.highDynamicRange = false;
+      viewer.scene.postProcessStages.fxaa.enabled = false;
+      
       if (viewer.scene.moon) viewer.scene.moon.show = true;
       if (viewer.scene.sun) viewer.scene.sun.show = true;
 
       viewerRef.current = viewer;
 
-      // 3D 지형 및 전 세계 빌딩 (비동기 — 실패해도 graceful degradation)
+      // 3D 지형 (Mountains) 활성화 (OSM 빌딩은 성능을 위해 완전히 제거됨)
       try {
-        const [terrainProvider, osmBuildings] = await Promise.all([
-          Cesium.createWorldTerrainAsync({ requestVertexNormals: true, requestWaterMask: true }),
-          Cesium.createOsmBuildingsAsync(),
-        ]);
+        const terrainProvider = await Cesium.createWorldTerrainAsync({ 
+          requestVertexNormals: true, 
+          requestWaterMask: true 
+        });
+        
         if (!isCancelled && viewerRef.current) {
           viewer.terrainProvider = terrainProvider;
-          osmBuildings.maximumScreenSpaceError = 1;
-          viewer.scene.primitives.add(osmBuildings);
         }
       } catch (e) {
-        logger.warn("Could not load world terrain or OSM buildings — degrading gracefully", toErrorContext(e));
+        logger.warn("Could not load world terrain — degrading gracefully", toErrorContext(e));
       }
 
       // 마커 추가

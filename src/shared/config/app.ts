@@ -109,11 +109,11 @@ export const APP_CONFIG = {
       },
       fog: {
         density: 0.0001,
-        screenSpaceErrorFactor: 2.0,
+        screenSpaceErrorFactor: 4.0,
       },
       rendering: {
-        maximumScreenSpaceError: 1.0,
-        shadowMapMaxDistance: 5000.0,
+        maximumScreenSpaceError: 16.0,
+        shadowMapMaxDistance: 2000.0,
       },
       scaleByDistance: {
         point: [1.5e2, 1.5, 8.0e6, 0.4] as const,
