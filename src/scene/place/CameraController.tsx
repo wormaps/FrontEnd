@@ -7,18 +7,17 @@ import { usePlaceStore } from "../../stores/placeStore";
 import type { InputPreset } from "../../stores/placeStore";
 import type { PlacePackage } from "../../data/placePackages";
 import { APP_CONFIG } from "../../shared/config";
-
-type GestureEventWithScale = Event & {
-  scale?: number;
-};
+import {
+  applyLookQuaternion as applyCameraLookQuaternion,
+  applyWalkMovementFrame,
+  computeCameraBounds,
+  type CameraBounds,
+} from "./cameraMath";
+import { useCameraModeTransitions } from "./useCameraModeTransitions";
+import { useCameraInputHandlers } from "./useCameraInputHandlers";
 
 type CameraControllerProps = {
   pkg: PlacePackage;
-};
-
-type CameraBounds = {
-  min: number;
-  max: number;
 };
 
 type PlaceStoreState = {
@@ -56,9 +55,7 @@ export default function CameraController({ pkg }: CameraControllerProps) {
   });
 
   const applyLookQuaternion = useCallback(() => {
-    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yawRef.current);
-    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitchRef.current);
-    camera.quaternion.copy(qYaw).multiply(qPitch);
+    applyCameraLookQuaternion(camera, yawRef.current, pitchRef.current);
   }, [camera]);
 
   const applyLookDelta = useCallback(
@@ -90,287 +87,32 @@ export default function CameraController({ pkg }: CameraControllerProps) {
     applyLookQuaternion();
   }, [camera, pkg.walkStartPosition, applyLookQuaternion]);
 
-  const applyForwardZoom = useCallback(
-    (delta: number, multiplier: number) => {
-      if (viewMode !== "walk") {
-        return;
-      }
-
-      const zoomForward = zoomForwardRef.current;
-      zoomForward.set(0, 0, -1).applyQuaternion(camera.quaternion);
-      zoomForward.y = 0;
-
-      if (zoomForward.lengthSq() <= 0) {
-        return;
-      }
-
-      zoomForward.normalize();
-      const zoomDistance = delta * multiplier;
-      const { min, max } = boundsRef.current;
-      const nextX = THREE.MathUtils.clamp(
-        camera.position.x + zoomForward.x * zoomDistance,
-        min,
-        max,
-      );
-      const nextZ = THREE.MathUtils.clamp(
-        camera.position.z + zoomForward.z * zoomDistance,
-        min,
-        max,
-      );
-
-      camera.position.set(nextX, camera.position.y, nextZ);
-    },
-    [camera, viewMode],
-  );
-
-  const applyTopZoom = useCallback(
-    (deltaY: number, multiplier = 1) => {
-      if (viewMode !== "top") {
-        return;
-      }
-
-      const [topX, topY] = CAMERA_CONFIG.topViewPosition;
-      const minZ = CAMERA_CONFIG.topViewZoomRange.minZ;
-      const maxZ = CAMERA_CONFIG.topViewZoomRange.maxZ;
-      const nextZ = THREE.MathUtils.clamp(
-        camera.position.z + deltaY * CAMERA_CONFIG.topViewWheelZoomMultiplier * multiplier,
-        minZ,
-        maxZ,
-      );
-
-      camera.position.set(topX, topY, nextZ);
-      camera.lookAt(0, 0, 0);
-    },
-    [camera, viewMode],
-  );
-
   useEffect(() => {
-    const maxAbs = Math.max(
-      ...pkg.roads.flatMap((r) => [Math.abs(r.start[0]), Math.abs(r.start[1]), Math.abs(r.end[0]), Math.abs(r.end[1])]),
-      CAMERA_CONFIG.boundsFallbackMaxAbs,
-    );
-    boundsRef.current = {
-      min: -maxAbs - CAMERA_CONFIG.boundsPadding,
-      max: maxAbs + CAMERA_CONFIG.boundsPadding,
-    };
+    boundsRef.current = computeCameraBounds(pkg, CAMERA_CONFIG);
   }, [pkg]);
 
-  useEffect(() => {
-    if (viewMode === "top") {
-      switchToTop();
-      isWalkingRef.current = false;
-    } else {
-      switchToWalk();
-      isWalkingRef.current = true;
-    }
-  }, [viewMode, switchToTop, switchToWalk]);
+  useCameraModeTransitions({
+    viewMode,
+    switchToTop,
+    switchToWalk,
+    isWalkingRef,
+  });
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      keysRef.current.add(key);
-
-      if (key === CAMERA_KEYBIND.toggleView) {
-        setViewMode(viewMode === "top" ? "walk" : "top");
-      }
-
-      if (key === CAMERA_KEYBIND.exitWalk && viewMode === "walk") {
-        setViewMode("top");
-      }
-    };
-
-    const onKeyUp = (e: KeyboardEvent) => {
-      keysRef.current.delete(e.key.toLowerCase());
-    };
-
-    const onMouseDown = (e: MouseEvent) => {
-      if (viewMode !== "walk") return;
-      if (e.button !== 0) return;
-      isMouseDraggingRef.current = true;
-    };
-
-    const onMouseUp = () => {
-      isMouseDraggingRef.current = false;
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      if (viewMode !== "walk") return;
-      if (!isMouseDraggingRef.current) return;
-      applyLookDelta(e.movementX, e.movementY);
-    };
-
-    const onWheel = (e: WheelEvent) => {
-      if (viewMode === "top") {
-        e.preventDefault();
-        applyTopZoom(e.deltaY);
-        return;
-      }
-
-      if (viewMode !== "walk") return;
-
-      const absX = Math.abs(e.deltaX);
-      const absY = Math.abs(e.deltaY);
-      const dominantRatio = CAMERA_CONFIG.gesture.wheelDominantAxisRatio;
-
-      const isHorizontalLook = absX > absY * dominantRatio;
-      const isPinchLikeZoom = e.ctrlKey || e.metaKey;
-      const isVerticalZoom = absY > absX * dominantRatio && !isPinchLikeZoom;
-
-      if (!isHorizontalLook && !isPinchLikeZoom && !isVerticalZoom) {
-        return;
-      }
-
-      e.preventDefault();
-
-      if (isPinchLikeZoom) {
-        applyForwardZoom(e.deltaY, CAMERA_CONFIG.gesture.pinchZoomMultiplier);
-
-        return;
-      }
-
-      if (isVerticalZoom) {
-        applyForwardZoom(e.deltaY, CAMERA_CONFIG.gesture.wheelZoomMultiplier);
-
-        return;
-      }
-
-      const deltaX = isHorizontalLook ? e.deltaX : 0;
-      const deltaY = 0;
-
-      applyLookDelta(
-        deltaX,
-        deltaY,
-        CAMERA_CONFIG.gesture.wheelLookMultiplier,
-      );
-    };
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (viewMode !== "walk") return;
-      const touch = e.touches[0];
-      if (!touch) return;
-      touchPrevRef.current = {
-        x: touch.clientX,
-        y: touch.clientY,
-      };
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (viewMode !== "walk") return;
-      const touch = e.touches[0];
-      if (!touch) return;
-      const previous = touchPrevRef.current;
-      if (!previous) {
-        touchPrevRef.current = {
-          x: touch.clientX,
-          y: touch.clientY,
-        };
-        return;
-      }
-
-      const deltaX = touch.clientX - previous.x;
-      const deltaY = touch.clientY - previous.y;
-
-      touchPrevRef.current = {
-        x: touch.clientX,
-        y: touch.clientY,
-      };
-
-      applyLookDelta(
-        deltaX,
-        deltaY,
-        CAMERA_CONFIG.gesture.touchLookMultiplier,
-      );
-    };
-
-    const onTouchEnd = () => {
-      touchPrevRef.current = null;
-    };
-
-    const onGestureStart = (event: Event) => {
-      const e = event as GestureEventWithScale;
-      if (viewMode !== "walk" && viewMode !== "top") {
-        return;
-      }
-
-      if (typeof e.scale !== "number") {
-        return;
-      }
-
-      pinchScalePrevRef.current = e.scale;
-      event.preventDefault();
-    };
-
-    const onGestureChange = (event: Event) => {
-      const e = event as GestureEventWithScale;
-      if (viewMode !== "walk" && viewMode !== "top") {
-        return;
-      }
-
-      if (typeof e.scale !== "number") {
-        return;
-      }
-
-      const previousScale = pinchScalePrevRef.current;
-      if (previousScale === null) {
-        pinchScalePrevRef.current = e.scale;
-        return;
-      }
-
-      const deltaScale = e.scale - previousScale;
-      pinchScalePrevRef.current = e.scale;
-
-      if (Math.abs(deltaScale) < 0.001) {
-        return;
-      }
-
-      event.preventDefault();
-
-      if (viewMode === "top") {
-        applyTopZoom(
-          -deltaScale,
-          CAMERA_CONFIG.gesture.pinchGestureZoomMultiplier,
-        );
-        return;
-      }
-
-      applyForwardZoom(
-        -deltaScale,
-        CAMERA_CONFIG.gesture.pinchGestureZoomMultiplier,
-      );
-    };
-
-    const onGestureEnd = () => {
-      pinchScalePrevRef.current = null;
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("mouseup", onMouseUp);
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
-    window.addEventListener("touchend", onTouchEnd);
-    window.addEventListener("gesturestart", onGestureStart as EventListener, { passive: false });
-    window.addEventListener("gesturechange", onGestureChange as EventListener, { passive: false });
-    window.addEventListener("gestureend", onGestureEnd as EventListener);
-
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", onTouchEnd);
-      window.removeEventListener("gesturestart", onGestureStart as EventListener);
-      window.removeEventListener("gesturechange", onGestureChange as EventListener);
-      window.removeEventListener("gestureend", onGestureEnd as EventListener);
-    };
-  }, [viewMode, inputPreset, setViewMode, applyLookDelta, applyForwardZoom, applyTopZoom]);
+  useCameraInputHandlers({
+    viewMode,
+    inputPreset,
+    setViewMode,
+    camera,
+    cameraConfig: CAMERA_CONFIG,
+    cameraKeybind: CAMERA_KEYBIND,
+    boundsRef,
+    keysRef,
+    isMouseDraggingRef,
+    touchPrevRef,
+    pinchScalePrevRef,
+    zoomForwardRef,
+    applyLookDelta,
+  });
 
   useFrame((_state, delta) => {
     if (!isWalkingRef.current) {
@@ -379,53 +121,19 @@ export default function CameraController({ pkg }: CameraControllerProps) {
 
     const keys = keysRef.current;
     const config = PRESET_CONFIG[inputPreset];
-    const moveDistance = config.moveSpeed * delta;
-    const verticalDistance = config.verticalSpeed * delta;
 
-    const moveInput = moveInputRef.current;
-    moveInput.set(
-      Number(keys.has(CAMERA_KEYBIND.moveRight)) - Number(keys.has(CAMERA_KEYBIND.moveLeft)),
-      0,
-      Number(keys.has(CAMERA_KEYBIND.moveBackward)) - Number(keys.has(CAMERA_KEYBIND.moveForward)),
-    );
-
-    if (moveInput.lengthSq() > 0) {
-      moveInput.normalize().multiplyScalar(moveDistance);
-
-      const forward = forwardRef.current;
-      forward.set(0, 0, -1).applyQuaternion(camera.quaternion);
-      forward.y = 0;
-      forward.normalize();
-
-      const right = rightRef.current;
-      right.set(1, 0, 0).applyQuaternion(camera.quaternion);
-      right.y = 0;
-      right.normalize();
-
-      camera.position.addScaledVector(right, moveInput.x);
-      camera.position.addScaledVector(forward, -moveInput.z);
-    }
-
-    let nextY = camera.position.y;
-
-    if (keys.has(CAMERA_KEYBIND.moveUp)) {
-      nextY += verticalDistance;
-    }
-
-    if (keys.has(CAMERA_KEYBIND.moveDown)) {
-      nextY -= verticalDistance;
-    }
-
-    const { min, max } = boundsRef.current;
-    camera.position.set(
-      THREE.MathUtils.clamp(camera.position.x, min, max),
-      THREE.MathUtils.clamp(
-        nextY,
-        CAMERA_CONFIG.walkHeight + CAMERA_CONFIG.walkVerticalClampOffset.min,
-        CAMERA_CONFIG.walkHeight + CAMERA_CONFIG.walkVerticalClampOffset.max,
-      ),
-      THREE.MathUtils.clamp(camera.position.z, min, max),
-    );
+    applyWalkMovementFrame({
+      camera,
+      keys,
+      inputConfig: config,
+      keybind: CAMERA_KEYBIND,
+      cameraConfig: CAMERA_CONFIG,
+      bounds: boundsRef.current,
+      delta,
+      moveInput: moveInputRef.current,
+      forward: forwardRef.current,
+      right: rightRef.current,
+    });
   });
 
   return null;
