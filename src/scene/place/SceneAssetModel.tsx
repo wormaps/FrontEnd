@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { usePlaybackStore } from "../../stores/playbackStore";
+import { selectIsNight } from "../../stores/selectors/playbackSelectors";
 import type { GeometryLiveMapping } from "../../shared/contracts";
 
 type SceneAssetModelProps = {
@@ -51,7 +52,7 @@ type LoadedSceneAssetModelProps = {
 };
 
 function LoadedSceneAssetModel({ assetUrl, mapping }: LoadedSceneAssetModelProps) {
-  const isNight = usePlaybackStore((state) => state.isNight());
+  const isNight = usePlaybackStore(selectIsNight);
   const gltf = useGLTF(assetUrl);
 
   const scene = useMemo(() => {

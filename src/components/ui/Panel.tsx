@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "@/src/shared/utils/cn";
 
 type PanelTone = "default" | "subtle";
 
@@ -8,18 +9,15 @@ type PanelProps = {
   children: ReactNode;
 };
 
-function toPanelToneClass(tone: PanelTone): string {
-  if (tone === "subtle") {
-    return "bg-white/5";
-  }
+const toneClasses: Record<PanelTone, string> = {
+  default: "glass-panel",
+  subtle: "bg-white/5",
+};
 
-  return "glass-panel";
-}
-
-export function Panel(props: PanelProps) {
-  const tone = props.tone ?? "default";
-  const toneClass = toPanelToneClass(tone);
-  const className = props.className ? `${toneClass} ${props.className}` : toneClass;
-
-  return <div className={className}>{props.children}</div>;
+export function Panel({ tone = "default", className, children }: PanelProps) {
+  return (
+    <div className={cn(toneClasses[tone], className)}>
+      {children}
+    </div>
+  );
 }

@@ -114,7 +114,7 @@ export default function GlobeScene({ places }: GlobeSceneProps) {
           viewer.scene.primitives.add(osmBuildings);
         }
       } catch (e) {
-        logger.warn("Could not load world terrain or OSM buildings — degrading gracefully", e);
+        logger.warn("Could not load world terrain or OSM buildings — degrading gracefully", toErrorContext(e));
       }
 
       // 마커 추가

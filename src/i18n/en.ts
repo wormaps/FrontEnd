@@ -92,7 +92,20 @@ export const en = {
       cloudy: "Cloudy",
       rain: "Rain",
       snow: "Snow"
+    },
+    performance: {
+      title: "Performance",
+      fps: "FPS",
+      frame: "Frame",
+      healthy: "Healthy",
+      watch: "Watch"
     }
+  },
+  dashboard: {
+    logout: "Logout",
+    serverNode: "Node-West-01",
+    storageUsed: "8.2 GB",
+    storageTotal: "15 GB"
   }
 };
 

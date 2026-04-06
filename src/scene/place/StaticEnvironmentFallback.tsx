@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { usePlaybackStore } from "../../stores/playbackStore";
+import { selectIsNight } from "../../stores/selectors/playbackSelectors";
 import type { PlacePackage, BuildingConfig, RoadConfig } from "../../data/placePackages";
 
 type StaticEnvironmentFallbackProps = {
@@ -19,7 +20,7 @@ function Ground({ pkg }: { pkg: PlacePackage }) {
 }
 
 function Building({ config }: { config: BuildingConfig }) {
-  const isNight = usePlaybackStore((s) => s.isNight());
+  const isNight = usePlaybackStore(selectIsNight);
   const baseColor = config.color;
 
   return (
@@ -54,7 +55,7 @@ function Road({ config }: { config: RoadConfig }) {
 }
 
 function NeonSigns({ pkg }: { pkg: PlacePackage }) {
-  const isNight = usePlaybackStore((s) => s.isNight());
+  const isNight = usePlaybackStore(selectIsNight);
   if (!isNight) return null;
 
   return (

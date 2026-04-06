@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "@/src/shared/utils/cn";
 
 type StatusBadgeTone = "active" | "paused" | "neutral";
 
@@ -9,31 +10,25 @@ type StatusBadgeProps = {
   children: ReactNode;
 };
 
-function toDotClass(tone: StatusBadgeTone, pulse: boolean): string {
-  const base = "status-dot";
+const dotBaseClass = "status-dot";
 
-  if (tone === "active") {
-    return pulse ? `${base} status-dot-success animate-pulse` : `${base} status-dot-success`;
-  }
+const dotToneClasses: Record<StatusBadgeTone, string> = {
+  active: "status-dot-success",
+  paused: "bg-zinc-500",
+  neutral: "status-dot-active",
+};
 
-  if (tone === "paused") {
-    return `${base} bg-zinc-500`;
-  }
-
-  return "status-dot-active";
-}
-
-export function StatusBadge(props: StatusBadgeProps) {
-  const tone = props.tone ?? "neutral";
-  const pulse = props.pulse ?? false;
-  const className = ["text-zinc-200 font-bold flex items-center gap-1.5", props.className]
-    .filter(Boolean)
-    .join(" ");
-
+export function StatusBadge({ tone = "neutral", pulse = false, className, children }: StatusBadgeProps) {
   return (
-    <span className={className}>
-      <span className={toDotClass(tone, pulse)} />
-      {props.children}
+    <span className={cn("text-zinc-200 font-bold flex items-center gap-1.5", className)}>
+      <span
+        className={cn(
+          dotBaseClass,
+          dotToneClasses[tone],
+          pulse && tone === "active" && "animate-pulse",
+        )}
+      />
+      {children}
     </span>
   );
 }

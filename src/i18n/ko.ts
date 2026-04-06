@@ -94,6 +94,19 @@ export const ko: Dictionary = {
       cloudy: "흐림",
       rain: "비",
       snow: "눈"
+    },
+    performance: {
+      title: "성능",
+      fps: "FPS",
+      frame: "프레임",
+      healthy: "정상",
+      watch: "감시 중"
     }
+  },
+  dashboard: {
+    logout: "로그아웃",
+    serverNode: "Node-West-01",
+    storageUsed: "8.2 GB",
+    storageTotal: "15 GB"
   }
 };

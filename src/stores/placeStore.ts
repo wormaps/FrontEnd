@@ -1,50 +1,14 @@
 import { create } from "zustand";
+import { createPlaceSlice, type PlaceSlice, type Place } from "./slices/placeSlice";
+import { createSceneLoadingSlice, type SceneLoadingSlice, type PlaceStatus } from "./slices/sceneLoadingSlice";
+import { createCameraSlice, type CameraSlice, type ViewMode, type InputPreset } from "./slices/cameraSlice";
 
-export type ViewMode = "top" | "walk";
-export type InputPreset = "precision" | "balanced" | "fast";
+export type { Place, PlaceStatus, ViewMode, InputPreset };
 
-export type PlaceStatus = "idle" | "loading" | "ready" | "error";
+export type PlaceStore = PlaceSlice & SceneLoadingSlice & CameraSlice;
 
-export type Place = {
-  id: string;
-  slug: string;
-  name: string;
-  lat: number;
-  lng: number;
-  city: string;
-  country: string;
-};
-
-type PlaceStore = {
-  currentPlace: Place | null;
-  setCurrentPlace: (place: Place | null) => void;
-
-  viewMode: ViewMode;
-  setViewMode: (mode: ViewMode) => void;
-
-  inputPreset: InputPreset;
-  setInputPreset: (preset: InputPreset) => void;
-
-  status: PlaceStatus;
-  setStatus: (status: PlaceStatus) => void;
-
-  progress: number;
-  setProgress: (progress: number) => void;
-};
-
-export const usePlaceStore = create<PlaceStore>((set) => ({
-  currentPlace: null,
-  setCurrentPlace: (place) => set({ currentPlace: place }),
-
-  viewMode: "top",
-  setViewMode: (mode) => set({ viewMode: mode }),
-
-  inputPreset: "balanced",
-  setInputPreset: (preset) => set({ inputPreset: preset }),
-
-  status: "idle",
-  setStatus: (status) => set({ status }),
-
-  progress: 0,
-  setProgress: (progress) => set({ progress }),
+export const usePlaceStore = create<PlaceStore>()((...a) => ({
+  ...createPlaceSlice(...a),
+  ...createSceneLoadingSlice(...a),
+  ...createCameraSlice(...a),
 }));

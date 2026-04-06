@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect } from "react";
 import { usePlaceStore } from "../../stores/placeStore";
 import { useAppStore } from "../../stores/appStore";
 import { usePlaybackStore } from "../../stores/playbackStore";
+import { selectIsNight } from "../../stores/selectors/playbackSelectors";
 import { APP_CONFIG } from "../../shared/config";
+import { normalizeHour } from "../../shared/domains";
 import StaticEnvironment from "./StaticEnvironment";
 import CameraController from "./CameraController";
 import PlaybackSystem from "./PlaybackSystem";
@@ -30,36 +32,65 @@ export default function PlaceSceneContent({ slug }: PlaceSceneContentProps) {
   const weather = usePlaybackStore((s) => s.weather);
   const currentPedestrianLevel = usePlaybackStore((s) => s.pedestrianLevel);
   const currentVehicleLevel = usePlaybackStore((s) => s.vehicleLevel);
-  const isNight = usePlaybackStore((s) => s.isNight());
+  const isNight = usePlaybackStore(selectIsNight);
 
-  const { scenePkg, sceneBootstrap, sceneMapping } = usePlaceBootstrap({
+  const { data, isLoading, isError } = usePlaceBootstrap(slug);
+
+  useEffect(() => {
+    if (isLoading) {
+      setStatus("loading");
+      setProgress(APP_CONFIG.place.loading.initialProgress);
+    } else if (isError) {
+      setStatus("error");
+    } else if (data) {
+      setCurrentPlace(data.placeMeta);
+      setMode("place");
+
+      const readyTimer = setTimeout(() => {
+        setProgress(APP_CONFIG.place.loading.completedProgress);
+        setStatus("ready");
+      }, APP_CONFIG.place.loading.readyDelayMs);
+
+      return () => clearTimeout(readyTimer);
+    }
+  }, [data, isLoading, isError, setCurrentPlace, setMode, setProgress, setStatus]);
+
+  const normalizedHour = normalizeHour(Math.floor(currentTime));
+
+  const { data: liveData } = useSceneLiveData({
     slug,
-    setStatus,
-    setProgress,
-    setCurrentPlace,
-    setMode,
+    bootstrap: data?.bootstrap ?? null,
+    normalizedHour,
+    currentPedestrianLevel,
   });
 
-  const normalizedHour = useMemo(() => {
-    const raw = Math.floor(currentTime);
-    return ((raw % 24) + 24) % 24;
-  }, [currentTime]);
-
-  useSceneLiveData({
-    slug,
-    bootstrap: sceneBootstrap,
-    normalizedHour,
-    currentWeather: weather,
+  useEffect(() => {
+    if (liveData) {
+      if (liveData.weather.condition !== weather) {
+        setWeather(liveData.weather.condition);
+      }
+      if (liveData.places.pedestrianDensity !== currentPedestrianLevel) {
+        setPedestrianLevel(liveData.places.pedestrianDensity);
+      }
+      if (liveData.places.vehicleDensity !== currentVehicleLevel) {
+        setVehicleLevel(liveData.places.vehicleDensity);
+      }
+    }
+  }, [
+    liveData,
+    weather,
     currentPedestrianLevel,
     currentVehicleLevel,
     setWeather,
     setPedestrianLevel,
     setVehicleLevel,
-  });
+  ]);
 
-  if (!scenePkg) {
+  if (!data) {
     return null;
   }
+
+  const { pkg: scenePkg, bootstrap: sceneBootstrap, mapping: sceneMapping } = data;
 
   const ambientIntensity = isNight
     ? APP_CONFIG.scene.light.night.ambientIntensity

@@ -1,124 +1,61 @@
-import { useEffect, useState } from "react";
-import type { PlacePackage } from "../../data/placePackages";
-import { APP_CONFIG } from "../../shared/config";
-import { fetchSceneBootstrapBundle } from "../../shared/api";
-import type { GeometryLiveMapping, SceneBootstrap } from "../../shared/contracts";
-import { createLogger, toErrorContext } from "../../shared/logger";
+import { useQuery } from "@tanstack/react-query";
+import { fetchSceneBootstrapBundle } from "@/src/shared/api";
+import { MVP_PLACES } from "@/src/data/places";
+import type { PlacePackage } from "@/src/data/placePackages";
+import type { GeometryLiveMapping, SceneBootstrap } from "@/src/shared/contracts";
 
-type UsePlaceBootstrapInput = {
+export type PlaceEntity = {
+  id: string;
   slug: string;
-  setStatus: (status: "idle" | "loading" | "ready" | "error") => void;
-  setProgress: (progress: number) => void;
-  setCurrentPlace: (place: {
-    id: string;
-    slug: string;
-    name: string;
-    lat: number;
-    lng: number;
-    city: string;
-    country: string;
-  } | null) => void;
-  setMode: (mode: "globe" | "loading" | "place") => void;
+  name: string;
+  lat: number;
+  lng: number;
+  city: string;
+  country: string;
 };
 
-type UsePlaceBootstrapResult = {
-  scenePkg: PlacePackage | null;
-  sceneBootstrap: SceneBootstrap | null;
-  sceneMapping: GeometryLiveMapping | null;
+export type PlaceBootstrapData = {
+  pkg: PlacePackage;
+  bootstrap: SceneBootstrap;
+  mapping: GeometryLiveMapping;
+  placeMeta: PlaceEntity;
 };
 
-const logger = createLogger("scene:place-bootstrap");
-
+/** slug → 표시 이름 변환 (fallback: slug를 제목형으로) */
 function toPlaceLabel(slug: string) {
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function usePlaceBootstrap(input: UsePlaceBootstrapInput): UsePlaceBootstrapResult {
-  const { slug, setStatus, setProgress, setCurrentPlace, setMode } = input;
+/** MVP_PLACES에서 slug에 맞는 장소 메타데이터를 조회합니다. */
+function findPlaceMeta(slug: string) {
+  return MVP_PLACES.find((p) => p.slug === slug) ?? null;
+}
 
-  const [scenePkgBySlug, setScenePkgBySlug] = useState<Record<string, PlacePackage | null>>({});
-  const [sceneBootstrapBySlug, setSceneBootstrapBySlug] = useState<Record<string, SceneBootstrap | null>>({});
-  const [sceneMappingBySlug, setSceneMappingBySlug] = useState<Record<string, GeometryLiveMapping | null>>({});
+export function usePlaceBootstrap(slug: string) {
+  return useQuery<PlaceBootstrapData>({
+    queryKey: ["place-bootstrap", slug],
+    queryFn: async () => {
+      const data = await fetchSceneBootstrapBundle(slug);
+      const knownPlace = findPlaceMeta(slug);
+      
+      const placeMeta: PlaceEntity = {
+        id: data.bootstrap.placeId,
+        slug: data.bootstrap.slug,
+        name: knownPlace?.name ?? toPlaceLabel(data.bootstrap.slug),
+        lat: knownPlace?.lat ?? 0,
+        lng: knownPlace?.lng ?? 0,
+        city: knownPlace?.city ?? "",
+        country: knownPlace?.country ?? "",
+      };
 
-  useEffect(() => {
-    let mounted = true;
-    let readyTimer: ReturnType<typeof setTimeout> | null = null;
-
-    setStatus("loading");
-    setProgress(APP_CONFIG.place.loading.initialProgress);
-
-    void fetchSceneBootstrapBundle(slug)
-      .then(({ bootstrap, mapping, pkg: fetchedPkg }) => {
-        if (!mounted) {
-          return;
-        }
-
-        setScenePkgBySlug((previous) => ({
-          ...previous,
-          [slug]: fetchedPkg,
-        }));
-        setSceneBootstrapBySlug((previous) => ({
-          ...previous,
-          [slug]: bootstrap,
-        }));
-        setSceneMappingBySlug((previous) => ({
-          ...previous,
-          [slug]: mapping,
-        }));
-
-        logger.info("Bootstrapping place scene", {
-          slug,
-          geometryId: bootstrap.geometryId,
-          bindingCount: mapping.bindings.length,
-          assetUrl: bootstrap.assetUrl,
-        });
-
-        setCurrentPlace({
-          id: bootstrap.placeId,
-          slug: bootstrap.slug,
-          name: toPlaceLabel(bootstrap.slug),
-          lat: 0,
-          lng: 0,
-          city: "",
-          country: "",
-        });
-        setMode("place");
-
-        readyTimer = setTimeout(() => {
-          if (!mounted) {
-            return;
-          }
-
-          setProgress(APP_CONFIG.place.loading.completedProgress);
-          setStatus("ready");
-          logger.info("Place scene ready", {
-            slug,
-          });
-        }, APP_CONFIG.place.loading.readyDelayMs);
-      })
-      .catch((error) => {
-        if (!mounted) {
-          return;
-        }
-
-        setStatus("error");
-        logger.error("Failed to bootstrap place scene", {
-          slug,
-          ...toErrorContext(error),
-        });
-      });
-
-    return () => {
-      mounted = false;
-      if (readyTimer) {
-        clearTimeout(readyTimer);
-      }
-    };
-  }, [setCurrentPlace, setMode, setProgress, setStatus, slug]);
-
-  return {
-    scenePkg: scenePkgBySlug[slug] ?? null,
-    sceneBootstrap: sceneBootstrapBySlug[slug] ?? null,
-    sceneMapping: sceneMappingBySlug[slug] ?? null,
-  };
+      return {
+        pkg: data.pkg,
+        bootstrap: data.bootstrap,
+        mapping: data.mapping,
+        placeMeta,
+      };
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
 }

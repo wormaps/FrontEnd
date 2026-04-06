@@ -6,6 +6,10 @@ export const APP_CONFIG = {
       readyDelayMs: 600,
     },
   },
+  liveData: {
+    /** 동일 키에 대한 중복 fetch 방지 최소 간격 (ms) */
+    fetchMinIntervalMs: 1200,
+  },
   scene: {
     light: {
       night: {

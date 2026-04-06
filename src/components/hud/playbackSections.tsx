@@ -3,6 +3,7 @@ import {
   Clock, Navigation, Move, ChevronLeft, ChevronRight,
   type LucideIcon,
 } from "lucide-react";
+import { cn } from "@/src/shared/utils/cn";
 import { ControlButton } from "@/src/components/ui/ControlButton";
 import type { InputPreset } from "@/src/stores/placeStore";
 import { useTranslation } from "@/src/stores/useI18nStore";
@@ -33,11 +34,12 @@ export function PlaybackControlSection(props: PlaybackControlSectionProps) {
     <div className="flex items-center gap-2">
       <button
         onClick={onTogglePlayback}
-        className={`h-11 w-11 flex items-center justify-center rounded-full border transition-colors ${
+        className={cn(
+          'h-11 w-11 flex items-center justify-center rounded-full border transition-colors',
           isPlaying
-            ? "bg-zinc-700/60 border-zinc-600 text-white hover:bg-zinc-600/60"
-            : "surface-accent text-accent-primary border-transparent"
-        }`}
+            ? 'bg-zinc-700/60 border-zinc-600 text-white hover:bg-zinc-600/60'
+            : 'surface-accent text-accent-primary border-transparent',
+        )}
         title={isPlaying ? t('scene.status.paused') : t('scene.status.running')}
       >
         {isPlaying
@@ -129,11 +131,12 @@ export function ViewModeToggleSection(props: ViewModeToggleSectionProps) {
   return (
     <button
       onClick={onToggleViewMode}
-      className={`h-10 gap-2 px-4 text-xs font-bold flex items-center rounded-xl border transition-colors ${
-        viewMode === "walk"
-          ? "bg-blue-500/20 border-blue-500/40 text-blue-300"
-          : "surface-muted border-transparent hover:bg-zinc-700/40"
-      }`}
+      className={cn(
+        'h-10 gap-2 px-4 text-xs font-bold flex items-center rounded-xl border transition-colors',
+        viewMode === 'walk'
+          ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+          : 'surface-muted border-transparent hover:bg-zinc-700/40',
+      )}
     >
       {viewMode === "top" ? <Navigation size={14} /> : <Move size={14} />}
       {viewMode === "top" ? t('scene.info.overview') : t('scene.info.street')}
